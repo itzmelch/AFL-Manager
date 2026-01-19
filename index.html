@@ -1128,6 +1128,67 @@ if (loadCareer()){
   }
 })();
 </script>
+
+<script>
+/* Hard override: training focus UI that cannot be blocked by renderHub */
+(function hardTrainingFocus(){
+  const ids = {
+    Balanced: "focusBalanced",
+    Fitness:  "focusFitness",
+    Skills:   "focusSkills",
+    Tactics:  "focusTactics",
+    Rehab:    "focusRehab"
+  };
+
+  function paint(){
+    for (const k in ids){
+      const el = document.getElementById(ids[k]);
+      if (!el) continue;
+      el.classList.toggle("active", App.trainingFocus === k);
+    }
+    // also update the hub line safely
+    const year = App.season?.year ?? "—";
+    const roundNo = (App.season?.roundIndex ?? 0) + 1;
+    const hubLine = document.getElementById("hubWeekLine");
+    if (hubLine) hubLine.textContent = `Season ${year} • Round ${roundNo}`;
+  }
+
+  function bind(id, focus){
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    // Ensure taps register on iOS
+    el.style.pointerEvents = "auto";
+    el.style.touchAction = "manipulation";
+
+    const handler = (e) => {
+      try { e.preventDefault(); } catch {}
+      try { e.stopPropagation(); } catch {}
+
+      App.trainingFocus = focus;
+      paint();
+
+      if (typeof toast === "function") toast("Training focus set", focus);
+      if (typeof saveCareer === "function") saveCareer();
+      return false;
+    };
+
+    el.addEventListener("touchend", handler, { passive:false });
+    el.addEventListener("pointerup", handler, { passive:false });
+    el.addEventListener("click", handler, { passive:false });
+  }
+
+  // Bind all
+  bind(ids.Balanced, "Balanced");
+  bind(ids.Fitness,  "Fitness");
+  bind(ids.Skills,   "Skills");
+  bind(ids.Tactics,  "Tactics");
+  bind(ids.Rehab,    "Rehab");
+
+  // Paint once now
+  paint();
+})();
+</script>
   
 </body>
 </html>
