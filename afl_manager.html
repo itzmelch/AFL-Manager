@@ -1,0 +1,4608 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>AFL Manager (Prototype)</title>
+  <style>
+    :root{
+      --bg: #0b0f14;
+      --panel: #101826;
+      --panel2: #0e1521;
+      --text: #e6edf7;
+      --muted: #9fb0c7;
+      --line: rgba(255,255,255,0.08);
+      --good: #46d17a;
+      --bad: #ff5a6a;
+      --warn: #ffcc66;
+      --accent: #7aa7ff;
+      --accent2: #b68cff;
+
+      --r: 14px;
+      --pad: 14px;
+
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bot: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+    }
+
+    *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body{
+      margin: 0;
+      background: radial-gradient(1200px 600px at 20% -10%, rgba(122,167,255,0.18), transparent 40%),
+                  radial-gradient(900px 500px at 90% 10%, rgba(182,140,255,0.14), transparent 45%),
+                  var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow-x: hidden;
+    }
+
+    .app{
+      min-height: 100%;
+      padding: calc(var(--safe-top) + 10px) calc(var(--safe-left) + 12px) calc(var(--safe-bot) + 90px) calc(var(--safe-right) + 12px);
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    header{
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: linear-gradient(to bottom, rgba(11,15,20,0.95), rgba(11,15,20,0.65));
+      backdrop-filter: blur(10px);
+      padding: 10px 0 12px 0;
+      margin-bottom: 10px;
+    }
+
+    .toprow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+    }
+
+    .brand{
+      display:flex;
+      flex-direction:column;
+      gap: 2px;
+    }
+    .brand .title{
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      font-size: 18px;
+      line-height: 1.1;
+    }
+    .brand .sub{
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      background: rgba(16,24,38,0.55);
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--muted);
+      user-select:none;
+      white-space:nowrap;
+    }
+    .pill b{ color: var(--text); font-weight: 700; }
+
+    .row{ display:flex; gap: 10px; flex-wrap: wrap; }
+    .row > * { flex: 1 1 auto; }
+
+    .card{
+      background: linear-gradient(180deg, rgba(16,24,38,0.95), rgba(14,21,33,0.95));
+      border: 1px solid var(--line);
+      border-radius: var(--r);
+      padding: var(--pad);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+    .card h2{
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      letter-spacing: 0.2px;
+    }
+    .card p{
+      margin: 6px 0;
+      color: var(--muted);
+      line-height: 1.4;
+      font-size: 13px;
+    }
+
+    .btnbar{ display:flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    button{
+      appearance:none;
+      border: 1px solid var(--line);
+      background: rgba(16,24,38,0.75);
+      color: var(--text);
+      padding: 12px 12px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 650;
+      letter-spacing: 0.2px;
+      cursor:pointer;
+      flex: 1 1 auto;
+      min-width: 120px;
+    }
+    button:active{ transform: translateY(1px); }
+    button.primary{
+      border-color: rgba(122,167,255,0.55);
+      background: linear-gradient(180deg, rgba(122,167,255,0.22), rgba(122,167,255,0.10));
+    }
+    button.danger{
+      border-color: rgba(255,90,106,0.55);
+      background: linear-gradient(180deg, rgba(255,90,106,0.18), rgba(255,90,106,0.08));
+    }
+    button.small{
+      padding: 9px 10px;
+      font-size: 13px;
+      min-width: 90px;
+    }
+    button:disabled{
+      opacity: 0.45;
+      cursor:not-allowed;
+    }
+
+    .tabs{
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 10px calc(var(--safe-left) + 10px) calc(var(--safe-bot) + 10px) calc(var(--safe-right) + 10px);
+      background: linear-gradient(to top, rgba(11,15,20,0.95), rgba(11,15,20,0.65));
+      backdrop-filter: blur(10px);
+      border-top: 1px solid var(--line);
+      z-index: 20;
+    }
+    .tabs .tabrow{
+      display:flex;
+      gap: 10px;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+    .tab{
+      flex: 1 1 0;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap: 4px;
+      padding: 10px 0;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 12px;
+      user-select:none;
+    }
+    .tab.active{
+      border-color: rgba(122,167,255,0.35);
+      background: rgba(16,24,38,0.55);
+      color: var(--text);
+    }
+    .tab .icon{ font-size: 16px; line-height: 1; }
+
+    .screen{ display:none; }
+    .screen.active{ display:block; }
+
+    .grid2{ display:grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 720px){
+      .grid2{ grid-template-columns: 1fr 1fr; }
+    }
+
+    .list{
+      display:flex;
+      flex-direction:column;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .item{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      padding: 10px 10px;
+      border: 1px solid var(--line);
+      background: rgba(16,24,38,0.45);
+      border-radius: 12px;
+    }
+    .item .left{ display:flex; flex-direction:column; gap: 2px; }
+    .item .name{ font-weight: 750; font-size: 14px; }
+    .item .meta{ color: var(--muted); font-size: 12px; }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .badge.good{ color: var(--good); border-color: rgba(70,209,122,0.35); background: rgba(70,209,122,0.08); }
+    .badge.bad{ color: var(--bad); border-color: rgba(255,90,106,0.35); background: rgba(255,90,106,0.08); }
+    .badge.warn{ color: var(--warn); border-color: rgba(255,204,102,0.35); background: rgba(255,204,102,0.08); }
+    .badge.accent{ color: var(--accent); border-color: rgba(122,167,255,0.35); background: rgba(122,167,255,0.08); }
+
+    table{
+      width: 100%;
+      border-collapse: collapse;
+      overflow:hidden;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(16,24,38,0.35);
+      font-size: 13px;
+    }
+    th, td{
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+    th{ color: var(--muted); font-weight: 700; font-size: 12px; letter-spacing: 0.2px; }
+    tr:last-child td{ border-bottom: none; }
+
+    .mono{ font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+    .right{ text-align:right; }
+
+    .toast{
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: calc(var(--safe-bot) + 78px);
+      max-width: 980px;
+      margin: 0 auto;
+      z-index: 30;
+      display:none;
+    }
+    .toast.show{ display:block; }
+    .toast .card{ padding: 12px; }
+    .toast .msg{ color: var(--text); font-size: 13px; }
+    .toast .hint{ color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+    .seg{
+      display:flex;
+      gap: 8px;
+      border: 1px solid var(--line);
+      background: rgba(16,24,38,0.35);
+      padding: 6px;
+      border-radius: 12px;
+      width: fit-content;
+    }
+    .seg button{
+      border: 1px solid transparent;
+      background: transparent;
+      padding: 8px 10px;
+      border-radius: 10px;
+      min-width: 90px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .seg button.active{
+      border-color: rgba(122,167,255,0.35);
+      background: rgba(122,167,255,0.10);
+      color: var(--text);
+    }
+
+    .hidden{ display:none !important; }
+    .spacer{ height: 10px; }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <div class="toprow">
+        <div class="brand">
+          <div class="title">AFL Manager <span class="badge accent">Prototype</span></div>
+          <div class="sub" id="topSub">No career loaded</div>
+        </div>
+        <div class="pill mono" id="topPill">
+          <span id="pillClub">—</span>
+          <span>•</span>
+          <span id="pillRound">R—</span>
+          <span>•</span>
+          <b id="pillRecord">—</b>
+        </div>
+      </div>
+    </header>
+
+    <!-- SCREEN: MAIN -->
+    <section class="screen active" id="screen-main">
+      <div class="grid2">
+        <div class="card">
+          <h2>New Career</h2>
+          <p>Generated league, generated players, generated draft. One club career. Realistic scoring pace.</p>
+
+          <div class="row">
+            <div class="pill">Seed: <b class="mono" id="seedLabel">20260119</b></div>
+            <div class="pill">Clubs: <b class="mono">18</b></div>
+            <div class="pill">Players/Club: <b class="mono">44</b></div>
+          </div>
+
+          <div class="btnbar">
+            <button class="primary" id="btnNewCareer">Generate League</button>
+            <button id="btnResetAll" class="danger">Reset</button>
+          </div>
+
+          <p class="muted">Tip: if you keep the same seed, you get the same league again (useful for testing).</p>
+        </div>
+
+        <div class="card">
+          <h2>Choose Club</h2>
+          <p>Pick your club after generating the league.</p>
+          <div class="list" id="clubList"></div>
+        </div>
+      </div>
+    </section>
+
+<section class="screen" id="screen-finals">
+  <div class="grid2">
+    <div class="card">
+      <h2>Finals (Top 8)</h2>
+      <p class="mono" id="finHdr">—</p>
+
+      <div class="btnbar">
+        <button class="primary" id="btnStartFinals">Start Finals</button>
+<button class="primary" id="btnPlayUserFinal">Play Your Finals Match</button>
+        <button id="btnSimFinalsRound">Sim Current Finals Week</button>
+        <button id="btnSimFinalsAll">Sim All Remaining Finals</button>
+        <button id="btnEnterOffseason">Enter Offseason</button>
+      </div>
+
+      <div class="row">
+        <div class="pill">Stage: <b class="mono" id="finStage">—</b></div>
+        <div class="pill">Status: <b class="mono" id="finStatus">—</b></div>
+      </div>
+
+      <div class="spacer"></div>
+      <h2>Bracket</h2>
+      <div class="list" id="finalsList"></div>
+    </div>
+
+    <div class="card">
+      <h2>Finals Log</h2>
+      <div class="list" id="finalsLog"></div>
+    </div>
+
+<div class="tab" data-go="finals"><div class="icon">🏆</div><div>Finals</div></div>
+  </div>
+</section>
+
+    <!-- SCREEN: HUB -->
+    <section class="screen" id="screen-hub">
+      <div class="grid2">
+        <div class="card">
+          <h2>Weekly Hub</h2>
+          <p class="mono" id="hubWeekLine">Season — • Round —</p>
+
+          <div class="spacer"></div>
+          <div class="seg" aria-label="Training focus">
+            <button id="focusBalanced" class="active">Balanced</button>
+            <button id="focusFitness">Fitness</button>
+            <button id="focusSkills">Skills</button>
+            <button id="focusTactics">Tactics</button>
+            <button id="focusRehab">Rehab</button>
+          </div>
+
+          <div class="btnbar">
+            <button class="primary" id="btnAutoPick">Auto Pick Best 22</button>
+            <button class="primary" id="btnPlayMatch">Play This Round (User Match)</button>
+            <button id="btnSimRound">Sim Rest of Round</button>
+<button id="btnAdvanceRound">Advance to Next Round</button>
+          </div>
+
+          <div class="row">
+            <div class="pill">Selected 22: <b class="mono" id="selCount">0</b></div>
+            <div class="pill">Avg Rating: <b class="mono" id="selAvg">—</b></div>
+            <div class="pill">Injuries: <b class="mono" id="injCount">—</b></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Your Squad (Top 12 by rating)</h2>
+          <div class="list" id="squadPreview"></div>
+          <div class="btnbar">
+            <button id="btnGoTeam">Team</button>
+            <button id="btnGoLadder">Ladder</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN: TEAM -->
+    <section class="screen" id="screen-team">
+      <div class="card">
+        <h2>Team Selection</h2>
+        <p>Tap players to toggle selection. Keep it at 22 (prototype will allow over/under for now; we’ll hard-enforce later).</p>
+        <div class="btnbar">
+          <button class="primary" id="btnTeamAutoPick">Auto Pick Best 22</button>
+          <button id="btnTeamClear">Clear</button>
+          <button id="btnTeamBack">Back to Hub</button>
+        </div>
+
+        <div class="row">
+          <div class="pill">Selected: <b class="mono" id="teamSelectedCount">0</b></div>
+          <div class="pill">Avg Rating: <b class="mono" id="teamAvgRating">—</b></div>
+        </div>
+
+        <div class="spacer"></div>
+        <div class="list" id="teamList"></div>
+      </div>
+    </section>
+
+    <!-- SCREEN: MATCH -->
+    <section class="screen" id="screen-match">
+      <div class="grid2">
+        <div class="card">
+          <h2>Match Center</h2>
+          <p class="mono" id="matchHeader">—</p>
+
+          <div class="row">
+            <div class="pill">QTR: <b class="mono" id="mQ">0</b></div>
+            <div class="pill">TIME: <b class="mono" id="mT">—</b></div>
+            <div class="pill">SPEED: <b class="mono" id="mS">Medium</b></div>
+          </div>
+
+          <div class="spacer"></div>
+          <div class="seg" aria-label="Sim speed">
+            <button id="speedSlow">Slow</button>
+            <button id="speedMed" class="active">Medium</button>
+            <button id="speedFast">Fast</button>
+          </div>
+
+          <div class="btnbar">
+            <button class="primary" id="btnMatchStart">Start Match</button>
+            <button id="btnMatchPause">Pause</button>
+            <button id="btnMatchExit">Exit</button>
+          </div>
+
+          <div class="card" style="margin-top:10px; background: rgba(16,24,38,0.35);">
+            <div class="row">
+              <div class="pill mono" style="flex:1">
+                <span id="homeName">HOME</span>
+                <span class="right" style="margin-left:auto"><b id="homeScore">0.0 (0)</b></span>
+              </div>
+              <div class="pill mono" style="flex:1">
+                <span id="awayName">AWAY</span>
+                <span class="right" style="margin-left:auto"><b id="awayScore">0.0 (0)</b></span>
+              </div>
+            </div>
+            <p class="muted" id="quarterLine">Q1: 0-0 • Q2: 0-0 • Q3: 0-0 • Q4: 0-0</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Live Feed</h2>
+          <p>Quarter-by-quarter events. On Fast speed this flies.</p>
+          <div class="list" id="feed"></div>
+
+<div class="spacer"></div>
+<div class="card" id="postMatchCard" style="display:none;">
+  <h2>Post-Match</h2>
+  <div class="row">
+    <div class="pill">Top goals: <b class="mono" id="pmTopGoals">—</b></div>
+    <div class="pill">Top disposals: <b class="mono" id="pmTopDisposals">—</b></div>
+  </div>
+  <div class="spacer"></div>
+  <h2>Leaders</h2>
+  <div class="list" id="pmLeaders"></div>
+</div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN: LADDER -->
+    <section class="screen" id="screen-ladder">
+      <div class="card">
+        <h2>Ladder</h2>
+        <div class="btnbar">
+          <button id="btnLadderBack">Back to Hub</button>
+        </div>
+        <div class="spacer"></div>
+        <div style="overflow:auto;">
+          <table id="ladderTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Club</th>
+                <th class="right">P</th>
+                <th class="right">W</th>
+                <th class="right">L</th>
+                <th class="right">D</th>
+                <th class="right">Pts</th>
+                <th class="right">%</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="muted">Finals + offseason + draft screens get added in later chunks.</p>
+      </div>
+    </section>
+
+<section class="screen" id="screen-offseason">
+  <div class="grid2">
+    <div class="card">
+      <h2>Offseason</h2>
+      <p class="mono" id="offHdr">Season — complete</p>
+
+      <div class="btnbar">
+        <button class="primary" id="btnFinishSeason">Finish Season & Enter Offseason</button>
+        <button id="btnStartNextSeason">Start Next Season</button>
+      </div>
+
+      <div class="row">
+        <div class="pill">Status: <b class="mono" id="offStatus">—</b></div>
+        <div class="pill">Draft Pool: <b class="mono" id="offDraftCount">—</b></div>
+        <div class="pill">Your List: <b class="mono" id="offListCount">—</b></div>
+      </div>
+
+      <div class="spacer"></div>
+      <h2>Offseason Log</h2>
+      <div class="list" id="offLog"></div>
+    </div>
+
+    <div class="card">
+      <h2>Draft Room</h2>
+      <p>2 rounds by default. AI picks best available by estimated rating. You can pick manually for your club.</p>
+
+      <div class="btnbar">
+        <button class="primary" id="btnRunDraftAuto">Run Draft (Auto)</button>
+        <button id="btnDraftPickForUser">Pick for Your Club</button>
+      </div>
+
+      <div class="list" id="draftList"></div>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="screen-history">
+  <div class="card">
+    <h2>History</h2>
+    <p class="mono" id="histHdr">—</p>
+    <div class="list" id="histList"></div>
+  </div>
+</section>
+  </div>
+
+  <!-- bottom nav -->
+  <nav class="tabs" aria-label="Bottom Navigation">
+    <div class="tabrow">
+      <div class="tab active" data-go="main"><div class="icon">🏁</div><div>Main</div></div>
+      <div class="tab" data-go="hub"><div class="icon">🏟️</div><div>Hub</div></div>
+      <div class="tab" data-go="team"><div class="icon">📋</div><div>Team</div></div>
+      <div class="tab" data-go="match"><div class="icon">⏱️</div><div>Match</div></div>
+      <div class="tab" data-go="ladder"><div class="icon">📊</div><div>Ladder</div></div>
+      <div class="tab" data-go="history"><div class="icon">📜</div><div>History</div></div>
+    </div>
+  </nav>
+
+  <div class="toast" id="toast">
+    <div class="card">
+      <div class="msg" id="toastMsg">—</div>
+      <div class="hint" id="toastHint">—</div>
+    </div>
+  </div>
+
+  <script>
+  /*****************************************************************
+   * AFL Manager Prototype (Chunked Single-File)
+   * Chunk 1/5: UI layout + routing + empty stubs
+   *
+   * Next chunks will fill in:
+   *  - League generation (clubs/players) + save/load
+   *  - Season fixture + ladder logic
+   *  - Match sim + speed toggle (realistic scoring)
+   *  - Draft + offseason
+   *****************************************************************/
+
+  // ---------- Simple App State ----------
+  const App = {
+    seed: 20260119,
+    hasCareer: false,
+    userClubId: null,
+    trainingFocus: "Balanced",
+    // these will be filled in later chunks:
+    league: null,     // { clubs:[], playersById:{} }
+    season: null,     // { year, roundIndex, rounds:[], ladder:{} }
+    selection: null,  // { selectedIds:[] }
+    match: null       // runtime match controller
+  };
+
+  // ---------- DOM Helpers ----------
+  const $ = (id) => document.getElementById(id);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+  function toast(msg, hint=""){
+    $("toastMsg").textContent = msg;
+    $("toastHint").textContent = hint;
+    $("toast").classList.add("show");
+    setTimeout(()=> $("toast").classList.remove("show"), 2200);
+  }
+
+  // ---------- Screen Routing ----------
+  const screens = ["main","hub","team","match","ladder"];
+
+  function go(screen){
+    for (const s of screens){
+      const el = $("screen-" + s);
+      if (!el) continue;
+      el.classList.toggle("active", s === screen);
+    }
+    for (const t of $$(".tab")){
+      t.classList.toggle("active", t.dataset.go === screen);
+    }
+    refreshTopBar();
+    refreshVisibleScreen();
+  }
+
+  // ---------- Top Bar ----------
+  function refreshTopBar(){
+    if (!App.hasCareer){
+      $("topSub").textContent = "No career loaded";
+      $("pillClub").textContent = "—";
+      $("pillRound").textContent = "R—";
+      $("pillRecord").textContent = "—";
+      return;
+    }
+    const club = getUserClub();
+    const roundNo = (App.season?.roundIndex ?? 0) + 1;
+
+    $("topSub").textContent = `Season ${App.season?.year ?? "—"} • Round ${roundNo}`;
+    $("pillClub").textContent = club ? club.name + " " + club.nick : "—";
+    $("pillRound").textContent = "R" + roundNo;
+
+    const rec = getUserRecord();
+    $("pillRecord").textContent = rec ? `${rec.w}-${rec.l}-${rec.d}` : "—";
+  }
+
+  function refreshVisibleScreen(){
+    const active = screens.find(s => $("screen-" + s)?.classList.contains("active")) || "main";
+    if (active === "main") renderMain();
+    if (active === "hub") renderHub();
+    if (active === "team") renderTeam();
+    if (active === "match") renderMatch();
+    if (active === "ladder") renderLadder();
+  }
+
+  // ---------- UI: Main ----------
+  function renderMain(){
+    $("seedLabel").textContent = String(App.seed);
+    const list = $("clubList");
+    list.innerHTML = "";
+    if (!App.hasCareer || !App.league){
+      list.innerHTML = `<div class="item"><div class="left"><div class="name">No league yet</div><div class="meta">Tap “Generate League” first</div></div><span class="badge">—</span></div>`;
+      return;
+    }
+    for (const c of App.league.clubs){
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="left">
+          <div class="name">${escapeHtml(c.name)} ${escapeHtml(c.nick)}</div>
+          <div class="meta mono">Club ID: ${c.id}</div>
+        </div>
+        <button class="small primary">Choose</button>
+      `;
+      div.querySelector("button").addEventListener("click", ()=>{
+        App.userClubId = c.id;
+        toast("Club selected", `${c.name} ${c.nick}`);
+        go("hub");
+      });
+      list.appendChild(div);
+    }
+  }
+
+  // ---------- UI: Hub ----------
+  function renderHub(){
+    if (!App.hasCareer) {
+      toast("Create a career first", "Go to Main → Generate League");
+      go("main");
+      return;
+    }
+
+    const roundNo = (App.season.roundIndex ?? 0) + 1;
+    $("hubWeekLine").textContent = `Season ${App.season.year} • Round ${roundNo}`;
+
+    // focus UI
+    const focusButtons = {
+      Balanced: $("focusBalanced"),
+      Fitness: $("focusFitness"),
+      Skills: $("focusSkills"),
+      Tactics: $("focusTactics"),
+      Rehab: $("focusRehab")
+    };
+    for (const k in focusButtons){
+      focusButtons[k].classList.toggle("active", App.trainingFocus === k);
+    }
+
+    // placeholders until later chunks populate selections + injuries
+    $("selCount").textContent = (App.selection?.selectedIds?.length ?? 0);
+    $("selAvg").textContent = "—";
+    $("injCount").textContent = "—";
+
+    renderSquadPreview();
+  }
+
+  function renderSquadPreview(){
+    const box = $("squadPreview");
+    box.innerHTML = "";
+    if (!App.league || !App.userClubId){
+      box.innerHTML = `<div class="item"><div class="left"><div class="name">No club selected</div><div class="meta">Pick a club on the Main screen</div></div></div>`;
+      return;
+    }
+    // Will be replaced with real player data in Chunk 2
+    box.innerHTML = `<div class="item"><div class="left"><div class="name">Players will appear after Chunk 2</div><div class="meta">We’ll generate ratings (1–99) and list your top players here</div></div></div>`;
+  }
+
+  // ---------- UI: Team ----------
+  function renderTeam(){
+    if (!App.hasCareer) { go("main"); return; }
+    $("teamSelectedCount").textContent = (App.selection?.selectedIds?.length ?? 0);
+    $("teamAvgRating").textContent = "—";
+    $("teamList").innerHTML = `<div class="item"><div class="left"><div class="name">Team screen activates in Chunk 2</div><div class="meta">You’ll be able to tap to select 22</div></div></div>`;
+  }
+
+  // ---------- UI: Match ----------
+  function renderMatch(){
+    if (!App.hasCareer) { go("main"); return; }
+    $("feed").innerHTML = `<div class="item"><div class="left"><div class="name">Match engine loads in Chunk 4</div><div class="meta">Quarter-by-quarter sim with Slow/Medium/Fast</div></div></div>`;
+  }
+
+  // ---------- UI: Ladder ----------
+  function renderLadder(){
+    if (!App.hasCareer) { go("main"); return; }
+    const tbody = $("ladderTable").querySelector("tbody");
+    tbody.innerHTML = `<tr><td colspan="8" style="color: var(--muted);">Ladder loads in Chunk 3</td></tr>`;
+  }
+
+  // ---------- Event wiring ----------
+  // Bottom tabs
+  $$(".tab").forEach(t => t.addEventListener("click", ()=> go(t.dataset.go)));
+
+  // Main buttons
+  $("btnNewCareer").addEventListener("click", ()=>{
+    // will be implemented in Chunk 2
+    toast("Chunk 2 required", "Next we’ll add league + player generation");
+  });
+
+  $("btnResetAll").addEventListener("click", ()=>{
+    Object.assign(App, {
+      hasCareer: false,
+      userClubId: null,
+      trainingFocus: "Balanced",
+      league: null,
+      season: null,
+      selection: null,
+      match: null
+    });
+    toast("Reset complete", "All data cleared");
+    go("main");
+  });
+
+  // Hub focus buttons
+  $("focusBalanced").addEventListener("click", ()=> { App.trainingFocus="Balanced"; renderHub(); });
+  $("focusFitness").addEventListener("click", ()=> { App.trainingFocus="Fitness"; renderHub(); });
+  $("focusSkills").addEventListener("click", ()=> { App.trainingFocus="Skills"; renderHub(); });
+  $("focusTactics").addEventListener("click", ()=> { App.trainingFocus="Tactics"; renderHub(); });
+  $("focusRehab").addEventListener("click", ()=> { App.trainingFocus="Rehab"; renderHub(); });
+
+  // Hub nav
+  $("btnGoTeam").addEventListener("click", ()=> go("team"));
+  $("btnGoLadder").addEventListener("click", ()=> go("ladder"));
+
+  // Hub actions (stubs for now)
+  $("btnAutoPick").addEventListener("click", ()=> toast("Chunk 2 required", "Auto-pick needs generated players"));
+  $("btnPlayMatch").addEventListener("click", ()=> toast("Chunk 4 required", "Match engine comes later"));
+  $("btnSimRound").addEventListener("click", ()=> toast("Chunk 3 required", "Season + fixture comes next"));
+
+  // Team buttons (stubs)
+  $("btnTeamAutoPick").addEventListener("click", ()=> toast("Chunk 2 required", "Auto-pick needs generated players"));
+  $("btnTeamClear").addEventListener("click", ()=> toast("Not ready yet", "Chunk 2 will implement selection"));
+  $("btnTeamBack").addEventListener("click", ()=> go("hub"));
+
+  // Ladder back
+  $("btnLadderBack").addEventListener("click", ()=> go("hub"));
+
+  // Match speed buttons (UI only for now)
+  const speedButtons = { Slow: $("speedSlow"), Medium: $("speedMed"), Fast: $("speedFast") };
+  let uiSpeed = "Medium";
+  function setUiSpeed(s){
+    uiSpeed = s;
+    $("mS").textContent = s;
+    for (const k in speedButtons) speedButtons[k].classList.toggle("active", k===s);
+  }
+  $("speedSlow").addEventListener("click", ()=> setUiSpeed("Slow"));
+  $("speedMed").addEventListener("click", ()=> setUiSpeed("Medium"));
+  $("speedFast").addEventListener("click", ()=> setUiSpeed("Fast"));
+
+  $("btnMatchStart").addEventListener("click", ()=> toast("Chunk 4 required", "Match sim not installed yet"));
+  $("btnMatchPause").addEventListener("click", ()=> toast("Chunk 4 required", "Pause/resume will be added"));
+  $("btnMatchExit").addEventListener("click", ()=> go("hub"));
+
+  // ---------- Utility ----------
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, s => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[s]));
+  }
+
+  function getUserClub(){
+    if (!App.league || !App.userClubId) return null;
+    return App.league.clubs.find(c => c.id === App.userClubId) || null;
+  }
+
+  function getUserRecord(){
+    // Ladder comes in Chunk 3, stub for now
+    return null;
+  }
+
+  // initial paint
+  refreshTopBar();
+  </script>
+
+  <!--
+    ============================================================
+    CHUNK INSERT POINTS (DO NOT DELETE)
+    ============================================================
+
+    [CHUNK 2] Data + League Generation + Save/Load
+    Paste Chunk 2 below this line.
+
+    [CHUNK 3] Season Fixture + Ladder + Round Simulation (AI)
+    Paste Chunk 3 below Chunk 2.
+
+    [CHUNK 4] Match Engine (Quarter-by-quarter) + Speed + Feed
+    Paste Chunk 4 below Chunk 3.
+
+    [CHUNK 5] Draft + Offseason + Progression
+    Paste Chunk 5 below Chunk 4.
+  -->
+
+<script>
+/*****************************************************************
+ * CHUNK 2/5
+ * League generation + players (1–99 ratings)
+ * Auto-pick best 22
+ * Save / Load (localStorage, iPhone safe)
+ *****************************************************************/
+
+// ---------- Constants ----------
+const POSITIONS = ["DEF","MID","FWD","RUC"];
+const ARCHETYPES = {
+  DEF: ["Intercept","Lockdown"],
+  MID: ["Inside","Outside","Wing"],
+  FWD: ["Small","Medium","Key"],
+  RUC: ["Ruck"]
+};
+
+const FIRST_NAMES = ["Jack","Tom","Liam","Noah","Harry","James","Ben","Will","Charlie","Sam","Josh","Luke","Max","Alex","Ryan","Caleb","Oscar","Matt","Nathan","Bailey"];
+const LAST_NAMES  = ["Smith","Jones","Williams","Brown","Wilson","Martin","Taylor","Anderson","Thomas","White","Walker","Scott","King","Green","Baker","Adams","Clark","Hill","Evans","Murphy"];
+
+const CLUB_NAMES = [
+  ["Bayside","Sharks"],["Northern","Rangers"],["Western","Roos"],["Eastern","Falcons"],
+  ["Harbour","Seagulls"],["Gippsland","Giants"],["Riverland","Crows"],["Highlands","Hawks"],
+  ["Coastal","Tigers"],["Outback","Demons"],["Metro","Magpies"],["Southport","Lions"],
+  ["Goldfields","Suns"],["Lakeside","Blues"],["Redwood","Bombers"],["Prairie","Bulldogs"],
+  ["Stonebridge","Saints"],["Ironvale","Power"]
+];
+
+// ---------- RNG ----------
+function rng(seed){
+  let s = seed % 2147483647;
+  return ()=> (s = s * 16807 % 2147483647) / 2147483647;
+}
+
+// ---------- League Generation ----------
+function generateLeague(seed){
+  const rand = rng(seed);
+  const league = { clubs: [], playersById: {} };
+
+  for (let i=0;i<18;i++){
+    const c = {
+      id: "C"+String(i).padStart(2,"0"),
+      name: CLUB_NAMES[i][0],
+      nick: CLUB_NAMES[i][1],
+      playerIds: []
+    };
+    league.clubs.push(c);
+
+    for (let p=0;p<44;p++){
+      const pos = weightedPick(rand, [
+        ["MID",0.32],["DEF",0.27],["FWD",0.29],["RUC",0.12]
+      ]);
+      const arch = ARCHETYPES[pos][Math.floor(rand()*ARCHETYPES[pos].length)];
+
+      const age = 18 + Math.floor(rand()*15); // 18–32
+      const base = 45 + Math.floor(rand()*30); // 45–75
+      const agePeak = 1 - Math.abs(age-27)*0.015;
+
+      let overall = Math.round(base * agePeak);
+      overall = clamp(overall + Math.floor(rand()*7)-3, 35, 90);
+
+      const pid = `${c.id}_P${p}`;
+      const player = {
+        id: pid,
+        name: FIRST_NAMES[Math.floor(rand()*FIRST_NAMES.length)]+" "+
+              LAST_NAMES[Math.floor(rand()*LAST_NAMES.length)],
+        age,
+        pos,
+        arch,
+        rating: overall,
+        fatigue: Math.floor(rand()*10),
+        injured: 0
+      };
+
+      league.playersById[pid] = player;
+      c.playerIds.push(pid);
+    }
+  }
+  return league;
+}
+
+// ---------- Auto Pick Best 22 ----------
+function autoPick22(club){
+  const players = club.playerIds
+    .map(id => App.league.playersById[id])
+    .filter(p => p.injured<=0)
+    .sort((a,b)=>b.rating-a.rating);
+
+  const picked = [];
+  take(players,picked,p=>p.pos==="RUC",1);
+  take(players,picked,p=>p.pos==="DEF",7);
+  take(players,picked,p=>p.pos==="MID",8);
+  take(players,picked,p=>p.pos==="FWD",6);
+
+  while (picked.length<22 && players.length){
+    picked.push(players.shift());
+  }
+  return picked.map(p=>p.id);
+}
+
+function take(src,dst,fn,n){
+  const take = src.filter(fn).slice(0,n);
+  take.forEach(p=>{
+    dst.push(p);
+    src.splice(src.indexOf(p),1);
+  });
+}
+
+// ---------- Save / Load ----------
+function saveCareer(){
+  localStorage.setItem("aflm_save", JSON.stringify({
+    seed: App.seed,
+    league: App.league,
+    season: App.season,
+    userClubId: App.userClubId,
+    selection: App.selection
+  }));
+}
+
+function loadCareer(){
+  const raw = localStorage.getItem("aflm_save");
+  if (!raw) return false;
+  const data = JSON.parse(raw);
+  Object.assign(App, data);
+  App.hasCareer = true;
+  return true;
+}
+
+// ---------- UI Wiring Overrides ----------
+$("btnNewCareer").onclick = ()=>{
+  App.league = generateLeague(App.seed);
+  App.hasCareer = true;
+  App.userClubId = null;
+  App.selection = { selectedIds: [] };
+  saveCareer();
+  toast("League generated","Pick your club");
+  renderMain();
+};
+
+$("btnAutoPick").onclick = ()=>{
+  if (!App.userClubId) return toast("Pick a club first");
+  const club = getUserClub();
+  App.selection.selectedIds = autoPick22(club);
+  saveCareer();
+  toast("Best 22 selected");
+  renderHub();
+};
+
+$("btnTeamAutoPick").onclick = ()=>{
+  if (!App.userClubId) return;
+  App.selection.selectedIds = autoPick22(getUserClub());
+  saveCareer();
+  renderTeam();
+};
+
+// ---------- Render Squad Preview ----------
+function renderSquadPreview(){
+  const box = $("squadPreview");
+  box.innerHTML = "";
+  if (!App.userClubId) return;
+
+  const club = getUserClub();
+  const players = club.playerIds
+    .map(id=>App.league.playersById[id])
+    .sort((a,b)=>b.rating-a.rating)
+    .slice(0,12);
+
+  players.forEach(p=>{
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <div class="left">
+        <div class="name">${escapeHtml(p.name)}</div>
+        <div class="meta">${p.pos} • ${p.arch}</div>
+      </div>
+      <span class="badge accent mono">${p.rating}</span>`;
+    box.appendChild(div);
+  });
+}
+
+// ---------- Render Team ----------
+function renderTeam(){
+  const list = $("teamList");
+  list.innerHTML = "";
+  const club = getUserClub();
+  if (!club) return;
+
+  const sel = new Set(App.selection.selectedIds||[]);
+  let sum=0;
+
+  club.playerIds
+    .map(id=>App.league.playersById[id])
+    .sort((a,b)=>b.rating-a.rating)
+    .forEach(p=>{
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="left">
+          <div class="name">${escapeHtml(p.name)}</div>
+          <div class="meta">${p.pos} • ${p.arch} • Age ${p.age}</div>
+        </div>
+        <span class="badge ${sel.has(p.id)?"good":"accent"} mono">${p.rating}</span>
+      `;
+      div.onclick = ()=>{
+        if (sel.has(p.id)) sel.delete(p.id);
+        else sel.add(p.id);
+        App.selection.selectedIds = Array.from(sel);
+        saveCareer();
+        renderTeam();
+      };
+      list.appendChild(div);
+      if (sel.has(p.id)) sum+=p.rating;
+    });
+
+  $("teamSelectedCount").textContent = sel.size;
+  $("teamAvgRating").textContent = sel.size
+    ? Math.round(sum/sel.size)
+    : "—";
+}
+
+// ---------- Helpers ----------
+function weightedPick(rand, arr){
+  const sum = arr.reduce((a,b)=>a+b[1],0);
+  let r = rand()*sum;
+  for (const [v,w] of arr){
+    r-=w;
+    if (r<=0) return v;
+  }
+  return arr[arr.length-1][0];
+}
+function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
+
+// ---------- Load on start ----------
+if (loadCareer()){
+  toast("Career loaded","Welcome back");
+  renderMain();
+}
+</script>
+
+<script>
+/* iPhone tap fix: bind touch + pointer + click for key buttons */
+(function iosTapFix(){
+  function bindTap(id, fn){
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    // Make sure nothing blocks taps
+    el.disabled = false;
+    el.style.pointerEvents = "auto";
+    el.style.touchAction = "manipulation";
+    el.style.webkitUserSelect = "none";
+
+    const handler = (e) => {
+      try { e.preventDefault(); } catch {}
+      try { e.stopPropagation(); } catch {}
+      fn();
+      return false;
+    };
+
+    // Remove any old handlers by cloning
+    const clone = el.cloneNode(true);
+    el.parentNode.replaceChild(clone, el);
+
+    clone.addEventListener("touchend", handler, { passive:false });
+    clone.addEventListener("pointerup", handler, { passive:false });
+    clone.addEventListener("click", handler, { passive:false });
+  }
+
+  function setFocus(focus){
+    if (!window.App) return;
+    App.trainingFocus = focus;
+    if (typeof renderHub === "function") renderHub();
+  }
+
+  // Training focus buttons
+  bindTap("focusBalanced", ()=> setFocus("Balanced"));
+  bindTap("focusFitness",   ()=> setFocus("Fitness"));
+  bindTap("focusSkills",    ()=> setFocus("Skills"));
+  bindTap("focusTactics",   ()=> setFocus("Tactics"));
+  bindTap("focusRehab",     ()=> setFocus("Rehab"));
+
+  // (Optional) speed buttons too, so they never fail
+  bindTap("speedSlow", ()=> { document.getElementById("mS").textContent="Slow"; });
+  bindTap("speedMed",  ()=> { document.getElementById("mS").textContent="Medium"; });
+  bindTap("speedFast", ()=> { document.getElementById("mS").textContent="Fast"; });
+})();
+</script>
+
+<script>
+/* Patch: make renderHub() safe before Chunk 3 creates App.season */
+(function patchRenderHub(){
+  window.renderHub = function renderHub(){
+    if (!App.hasCareer) { go("main"); return; }
+
+    const year = App.season?.year ?? "—";
+    const roundIndex = App.season?.roundIndex ?? 0;
+    const roundNo = roundIndex + 1;
+
+    $("hubWeekLine").textContent = `Season ${year} • Round ${roundNo}`;
+
+    // focus UI
+    const focusButtons = {
+      Balanced: $("focusBalanced"),
+      Fitness: $("focusFitness"),
+      Skills: $("focusSkills"),
+      Tactics: $("focusTactics"),
+      Rehab: $("focusRehab")
+    };
+    for (const k in focusButtons){
+      if (!focusButtons[k]) continue;
+      focusButtons[k].classList.toggle("active", App.trainingFocus === k);
+    }
+
+    // Selected 22 + Avg Rating
+    const selIds = App.selection?.selectedIds ?? [];
+    $("selCount").textContent = String(selIds.length);
+
+    if (App.league && selIds.length){
+      let sum = 0;
+      for (const id of selIds){
+        const p = App.league.playersById[id];
+        if (p) sum += p.rating;
+      }
+      $("selAvg").textContent = String(Math.round(sum / selIds.length));
+    } else {
+      $("selAvg").textContent = "—";
+    }
+
+    // Injuries count
+    const club = getUserClub();
+    if (club && App.league){
+      const inj = club.playerIds
+        .map(id => App.league.playersById[id])
+        .filter(p => p && p.injured > 0).length;
+      $("injCount").textContent = String(inj);
+    } else {
+      $("injCount").textContent = "—";
+    }
+
+    // Preview
+    if (typeof renderSquadPreview === "function") renderSquadPreview();
+  };
+
+  // Re-render immediately so UI reflects current focus
+  if (document.getElementById("screen-hub")?.classList.contains("active")) {
+    renderHub();
+  }
+})();
+</script>
+
+<script>
+/* Hard override: training focus UI that cannot be blocked by renderHub */
+(function hardTrainingFocus(){
+  const ids = {
+    Balanced: "focusBalanced",
+    Fitness:  "focusFitness",
+    Skills:   "focusSkills",
+    Tactics:  "focusTactics",
+    Rehab:    "focusRehab"
+  };
+
+  function paint(){
+    for (const k in ids){
+      const el = document.getElementById(ids[k]);
+      if (!el) continue;
+      el.classList.toggle("active", App.trainingFocus === k);
+    }
+    // also update the hub line safely
+    const year = App.season?.year ?? "—";
+    const roundNo = (App.season?.roundIndex ?? 0) + 1;
+    const hubLine = document.getElementById("hubWeekLine");
+    if (hubLine) hubLine.textContent = `Season ${year} • Round ${roundNo}`;
+  }
+
+  function bind(id, focus){
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    // Ensure taps register on iOS
+    el.style.pointerEvents = "auto";
+    el.style.touchAction = "manipulation";
+
+    const handler = (e) => {
+      try { e.preventDefault(); } catch {}
+      try { e.stopPropagation(); } catch {}
+
+      App.trainingFocus = focus;
+      paint();
+
+      if (typeof toast === "function") toast("Training focus set", focus);
+      if (typeof saveCareer === "function") saveCareer();
+      return false;
+    };
+
+    el.addEventListener("touchend", handler, { passive:false });
+    el.addEventListener("pointerup", handler, { passive:false });
+    el.addEventListener("click", handler, { passive:false });
+  }
+
+  // Bind all
+  bind(ids.Balanced, "Balanced");
+  bind(ids.Fitness,  "Fitness");
+  bind(ids.Skills,   "Skills");
+  bind(ids.Tactics,  "Tactics");
+  bind(ids.Rehab,    "Rehab");
+
+  // Paint once now
+  paint();
+})();
+</script>
+
+<script>
+/*****************************************************************
+ * CHUNK 3/5
+ * Season fixture (23 rounds), ladder, simulate AI games
+ *****************************************************************/
+
+// ---------- Season / Ladder ----------
+function newSeason(year=2026){
+  const season = {
+    year,
+    roundIndex: 0,
+    rounds: [],      // [{ number, games:[{home,away,played,hs,has,as,abs}] }]
+    ladder: {}       // clubId -> entry
+  };
+
+  for (const c of App.league.clubs){
+    season.ladder[c.id] = {
+      clubId: c.id,
+      played: 0, wins: 0, losses: 0, draws: 0,
+      pf: 0, pa: 0
+    };
+  }
+  return season;
+}
+
+function ladderPct(e){
+  return e.pa === 0 ? 999.0 : (e.pf * 100.0) / e.pa;
+}
+
+function ladderPts(e){
+  return e.wins * 4 + e.draws * 2;
+}
+
+function applyResultToLadder(fx){
+  const home = App.season.ladder[fx.home];
+  const away = App.season.ladder[fx.away];
+
+  home.played++; away.played++;
+  home.pf += fx.homePts; home.pa += fx.awayPts;
+  away.pf += fx.awayPts; away.pa += fx.homePts;
+
+  if (fx.homePts > fx.awayPts){ home.wins++; away.losses++; }
+  else if (fx.homePts < fx.awayPts){ away.wins++; home.losses++; }
+  else { home.draws++; away.draws++; }
+}
+
+// ---------- Fixture generation (round-robin base + extra rounds) ----------
+function generateFixture23(){
+  const ids = App.league.clubs.map(c=>c.id);
+  const baseRounds = roundRobin(ids);   // 17 rounds
+  const rounds = [];
+
+  for (let i=0;i<baseRounds.length;i++){
+    rounds.push({ number: i+1, games: baseRounds[i].map(pair=>mkFx(pair[0],pair[1])) });
+  }
+
+  // extra rounds to reach 23
+  while (rounds.length < 23){
+    const lastPairs = new Set();
+    if (rounds.length){
+      for (const g of rounds[rounds.length-1].games){
+        lastPairs.add(normPair(g.home,g.away));
+      }
+    }
+    const extra = randomPairRound(ids, lastPairs);
+    rounds.push({ number: rounds.length+1, games: extra.map(pair=>mkFx(pair[0],pair[1])) });
+  }
+
+  return rounds;
+}
+
+function mkFx(home, away){
+  return { home, away, played:false, homeG:0, homeB:0, awayG:0, awayB:0, homePts:0, awayPts:0 };
+}
+
+function normPair(a,b){ return a < b ? `${a}-${b}` : `${b}-${a}`; }
+
+// Circle method round robin (17 rounds for 18 clubs)
+function roundRobin(ids){
+  const arr = ids.slice();
+  if (arr.length % 2 === 1) arr.push("BYE");
+  const n = arr.length;
+  const rounds = n - 1;
+  const half = n / 2;
+
+  const out = [];
+  let list = arr.slice();
+
+  for (let r=0;r<rounds;r++){
+    const pairs = [];
+    for (let i=0;i<half;i++){
+      const a = list[i];
+      const b = list[n-1-i];
+      if (a === "BYE" || b === "BYE") continue;
+
+      // alternate home/away
+      const flip = (r % 2) === 1;
+      pairs.push(flip ? [b,a] : [a,b]);
+    }
+    out.push(pairs);
+
+    // rotate, keep first fixed
+    const last = list.pop();
+    list.splice(1,0,last);
+  }
+
+  return out;
+}
+
+function randomPairRound(ids, lastPairs){
+  const rand = rng(App.seed + 999 + App.season?.roundIndex*17 || 123);
+  const pool = ids.slice();
+  const pairs = [];
+
+  while (pool.length >= 2){
+    const a = pool.splice(Math.floor(rand()*pool.length),1)[0];
+
+    // choose opponent not in last round if possible
+    let candidates = pool.filter(x => !lastPairs.has(normPair(a,x)));
+    if (candidates.length === 0) candidates = pool;
+
+    const b = candidates[Math.floor(rand()*candidates.length)];
+    pool.splice(pool.indexOf(b),1);
+
+    // coin flip home/away
+    const flip = rand() < 0.5;
+    pairs.push(flip ? [a,b] : [b,a]);
+  }
+  return pairs;
+}
+
+// ---------- Team strength from selected IDs (avg rating only for now) ----------
+function avgRatingOf(ids){
+  if (!ids || !ids.length) return 50;
+  let sum = 0, n=0;
+  for (const id of ids){
+    const p = App.league.playersById[id];
+    if (!p) continue;
+    sum += p.rating;
+    n++;
+  }
+  return n ? (sum/n) : 50;
+}
+
+// ---------- AI game sim (realistic scoring pace) ----------
+function simAIGame(homeId, awayId){
+  // Use best 22 for AI clubs
+  const homeClub = App.league.clubs.find(c=>c.id===homeId);
+  const awayClub = App.league.clubs.find(c=>c.id===awayId);
+
+  const home22 = autoPick22(homeClub);
+  const away22 = autoPick22(awayClub);
+
+  const homeAvg = avgRatingOf(home22); // 35..90 typical
+  const awayAvg = avgRatingOf(away22);
+
+  // Convert rating to advantage
+  const diff = homeAvg - awayAvg; // +/- ~10
+  const baseShots = 25;           // typical team shots
+  const baseAcc = 0.52;           // realistic accuracy
+
+  // Shots influenced by diff + random
+  const homeShots = clampInt(Math.round(baseShots + diff*0.55 + randNorm(0, 3.2)), 16, 36);
+  const awayShots = clampInt(Math.round(baseShots - diff*0.45 + randNorm(0, 3.2)), 16, 36);
+
+  // Accuracy influenced by rating slightly
+  const homeAcc = clamp(baseAcc + (homeAvg-60)*0.0012 + randNorm(0, 0.02), 0.44, 0.60);
+  const awayAcc = clamp(baseAcc + (awayAvg-60)*0.0012 + randNorm(0, 0.02), 0.44, 0.60);
+
+  const homeGoals = binom(homeShots, homeAcc);
+  const awayGoals = binom(awayShots, awayAcc);
+
+  const homeBehinds = Math.max(0, homeShots - homeGoals);
+  const awayBehinds = Math.max(0, awayShots - awayGoals);
+
+  return {
+    homeG: homeGoals, homeB: homeBehinds,
+    awayG: awayGoals, awayB: awayBehinds
+  };
+}
+
+function clampInt(v,min,max){ return Math.max(min,Math.min(max,v)); }
+
+// Gaussian approx
+function randNorm(mean, std){
+  // Box-Muller using deterministic-ish randomness from Math.random() is fine here
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0*Math.PI*v);
+  return mean + z*std;
+}
+
+// Binomial
+function binom(n,p){
+  let x=0;
+  for (let i=0;i<n;i++) if (Math.random() < p) x++;
+  return x;
+}
+
+// ---------- Round simulation ----------
+function currentRound(){
+  return App.season.rounds[App.season.roundIndex];
+}
+
+function simulateRestOfRound(){
+  const rnd = currentRound();
+  if (!rnd) return toast("No round found");
+
+  for (const fx of rnd.games){
+    if (fx.played) continue;
+
+    // Skip user match if present
+    const isUserMatch = (fx.home === App.userClubId || fx.away === App.userClubId);
+    if (isUserMatch) continue;
+
+    const r = simAIGame(fx.home, fx.away);
+    fx.homeG = r.homeG; fx.homeB = r.homeB;
+    fx.awayG = r.awayG; fx.awayB = r.awayB;
+    fx.homePts = r.homeG*6 + r.homeB;
+    fx.awayPts = r.awayG*6 + r.awayB;
+    fx.played = true;
+
+    applyResultToLadder(fx);
+  }
+
+  saveCareer();
+  toast("Sim complete", "Non-user games played");
+  renderLadder();
+  refreshTopBar();
+}
+
+function endRoundAdvance(){
+  // Ensure all games are played (user match must be completed in Chunk 4)
+  const rnd = currentRound();
+  const allPlayed = rnd.games.every(g => g.played);
+  if (!allPlayed){
+    toast("Round not finished", "Play your match first (Chunk 4) or sim all later");
+    return false;
+  }
+
+  if (App.season.roundIndex < App.season.rounds.length - 1){
+    App.season.roundIndex++;
+    saveCareer();
+    toast("Round advanced", `Now Round ${App.season.roundIndex+1}`);
+    refreshTopBar();
+    renderHub();
+    return true;
+  }
+  toast("Season complete", "Finals come in Chunk 5");
+  return true;
+}
+
+// ---------- UI: Ladder render + user record ----------
+window.getUserRecord = function(){
+  if (!App.season || !App.userClubId) return null;
+  const e = App.season.ladder[App.userClubId];
+  if (!e) return null;
+  return { w:e.wins, l:e.losses, d:e.draws };
+};
+
+window.renderLadder = function(){
+  if (!App.hasCareer || !App.season){
+    $("ladderTable").querySelector("tbody").innerHTML = `<tr><td colspan="8" style="color: var(--muted);">No season yet</td></tr>`;
+    return;
+  }
+
+  const entries = Object.values(App.season.ladder)
+    .slice()
+    .sort((a,b)=>{
+      const dPts = ladderPts(b) - ladderPts(a);
+      if (dPts !== 0) return dPts;
+      return ladderPct(b) - ladderPct(a);
+    });
+
+  const tbody = $("ladderTable").querySelector("tbody");
+  tbody.innerHTML = "";
+
+  entries.forEach((e, idx)=>{
+    const club = App.league.clubs.find(c=>c.id===e.clubId);
+    const tr = document.createElement("tr");
+    const isUser = e.clubId === App.userClubId;
+    tr.innerHTML = `
+      <td class="mono">${idx+1}</td>
+      <td>${escapeHtml(club.name)} ${escapeHtml(club.nick)} ${isUser ? '<span class="badge good">YOU</span>' : ''}</td>
+      <td class="right mono">${e.played}</td>
+      <td class="right mono">${e.wins}</td>
+      <td class="right mono">${e.losses}</td>
+      <td class="right mono">${e.draws}</td>
+      <td class="right mono">${ladderPts(e)}</td>
+      <td class="right mono">${ladderPct(e).toFixed(1)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+};
+
+// ---------- Hook into career creation ----------
+const prevGenerate = $("btnNewCareer").onclick;
+$("btnNewCareer").onclick = ()=>{
+  prevGenerate && prevGenerate();
+
+  // Create season + fixture
+  App.season = newSeason(2026);
+  App.season.rounds = generateFixture23();
+  saveCareer();
+
+  toast("Season created", "23 rounds generated");
+  refreshTopBar();
+  renderMain();
+};
+
+// ---------- Hub: Sim rest of round / Play user match (stub route) ----------
+$("btnSimRound").onclick = ()=>{
+  if (!App.hasCareer || !App.season) return toast("No season yet");
+  if (!App.userClubId) return toast("Pick your club first");
+  simulateRestOfRound();
+};
+
+$("btnPlayMatch").onclick = ()=>{
+  if (!App.hasCareer || !App.season) return toast("No season yet");
+  if (!App.userClubId) return toast("Pick your club first");
+  const rnd = currentRound();
+  const userFx = rnd.games.find(g => g.home === App.userClubId || g.away === App.userClubId);
+  if (!userFx) return toast("No user fixture found");
+
+  // Setup match header (actual sim comes in Chunk 4)
+  const homeClub = App.league.clubs.find(c=>c.id===userFx.home);
+  const awayClub = App.league.clubs.find(c=>c.id===userFx.away);
+
+  $("matchHeader").textContent = `Round ${rnd.number} • ${homeClub.name} ${homeClub.nick} vs ${awayClub.name} ${awayClub.nick}`;
+  $("homeName").textContent = `${homeClub.name} ${homeClub.nick}`;
+  $("awayName").textContent = `${awayClub.name} ${awayClub.nick}`;
+
+  // reset scoreboard UI
+  $("homeScore").textContent = "0.0 (0)";
+  $("awayScore").textContent = "0.0 (0)";
+  $("quarterLine").textContent = "Q1: 0-0 • Q2: 0-0 • Q3: 0-0 • Q4: 0-0";
+  $("mQ").textContent = "0";
+  $("mT").textContent = "—";
+  $("feed").innerHTML = "";
+
+  toast("Match ready", "Chunk 4 adds the live sim");
+  go("match");
+};
+
+// ---------- Ensure season exists on load ----------
+(function ensureSeasonOnLoad(){
+  if (!App.hasCareer) return;
+  if (App.league && !App.season){
+    App.season = newSeason(2026);
+    App.season.rounds = generateFixture23();
+    saveCareer();
+  }
+  refreshTopBar();
+})();
+</script>
+
+<script>
+/*****************************************************************
+ * CHUNK 4/5
+ * Match Engine (quarter-by-quarter) + speed + event feed
+ * Writes result back into fixture + ladder on full-time
+ *****************************************************************/
+
+(function installMatchEngine(){
+
+  // --------- Match runtime state ----------
+  App.match = App.match || {
+    running: false,
+    paused: false,
+    speed: "Medium", // Slow | Medium | Fast
+    q: 0,
+    tick: 0,
+    ticksPerQuarter: 26,   // ~13 mins at 30s/tick (AFL-ish)
+    tickSeconds: 30,
+    homeId: null,
+    awayId: null,
+    homeName: "",
+    awayName: "",
+    homeSel: [],
+    awaySel: [],
+    homeAvg: 50,
+    awayAvg: 50,
+    homeG: 0, homeB: 0,
+    awayG: 0, awayB: 0,
+    qScores: [{h:0,a:0},{h:0,a:0},{h:0,a:0},{h:0,a:0}],
+    rng: null,
+    fx: null
+  };
+
+  function getDelayMs(){
+    return App.match.speed === "Slow" ? 520
+         : App.match.speed === "Fast" ? 65
+         : 200;
+  }
+
+  function setSpeed(s){
+    App.match.speed = s;
+    $("mS").textContent = s;
+    // highlight seg
+    $("speedSlow").classList.toggle("active", s==="Slow");
+    $("speedMed").classList.toggle("active", s==="Medium");
+    $("speedFast").classList.toggle("active", s==="Fast");
+    saveCareer && saveCareer();
+  }
+
+  // Speed button hooks (do not rely on earlier patches)
+  ["Slow","Medium","Fast"].forEach(s=>{
+    const id = s==="Slow" ? "speedSlow" : s==="Medium" ? "speedMed" : "speedFast";
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("click", ()=> setSpeed(s));
+    el.addEventListener("touchend", (e)=>{ try{e.preventDefault()}catch{}; setSpeed(s); }, {passive:false});
+    el.addEventListener("pointerup", (e)=>{ try{e.preventDefault()}catch{}; setSpeed(s); }, {passive:false});
+  });
+
+  // --------- Helpers ----------
+  function clubName(id){
+    const c = App.league.clubs.find(x=>x.id===id);
+    return c ? `${c.name} ${c.nick}` : id;
+  }
+
+  function scoreStr(g,b){
+    const pts = g*6 + b;
+    return `${g}.${b} (${pts})`;
+  }
+
+  function updateScoreUI(){
+    $("homeScore").textContent = scoreStr(App.match.homeG, App.match.homeB);
+    $("awayScore").textContent = scoreStr(App.match.awayG, App.match.awayB);
+
+    const q = App.match.qScores;
+    $("quarterLine").textContent =
+      `Q1: ${q[0].h}-${q[0].a} • Q2: ${q[1].h}-${q[1].a} • Q3: ${q[2].h}-${q[2].a} • Q4: ${q[3].h}-${q[3].a}`;
+  }
+
+  function pushFeed(text, badge=null){
+    const feed = $("feed");
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <div class="left">
+        <div class="name">${escapeHtml(text)}</div>
+        <div class="meta mono">Q${App.match.q} • ${$("mT").textContent}</div>
+      </div>
+      ${badge ? `<span class="badge ${badge}">●</span>` : `<span class="badge"> </span>`}
+    `;
+    feed.prepend(div);
+    // cap feed size
+    while (feed.children.length > 35) feed.removeChild(feed.lastChild);
+  }
+
+  function timeRemainingStr(){
+    const ticksLeft = App.match.ticksPerQuarter - App.match.tick;
+    const secs = ticksLeft * App.match.tickSeconds;
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${String(s).padStart(2,"0")}`;
+  }
+
+  function avgRating(ids){
+    if (!ids || !ids.length) return 50;
+    let sum=0, n=0;
+    for (const id of ids){
+      const p = App.league.playersById[id];
+      if (!p) continue;
+      sum += p.rating;
+      n++;
+    }
+    return n ? sum/n : 50;
+  }
+
+  function pickWeighted(ids, weightFn){
+    let total = 0;
+    for (const id of ids){
+      const p = App.league.playersById[id];
+      if (!p) continue;
+      total += Math.max(0.001, weightFn(p));
+    }
+    let r = App.match.rng() * total;
+    for (const id of ids){
+      const p = App.league.playersById[id];
+      if (!p) continue;
+      r -= Math.max(0.001, weightFn(p));
+      if (r <= 0) return p;
+    }
+    return App.league.playersById[ids[ids.length-1]];
+  }
+
+  function shooterFor(teamIds){
+    // bias forwards & higher ratings
+    const forwards = teamIds.filter(id=>{
+      const p = App.league.playersById[id];
+      return p && (p.pos==="FWD" || p.pos==="RUC") ;
+    });
+    const pool = forwards.length ? forwards : teamIds;
+
+    return pickWeighted(pool, p=>{
+      let w = 1.0;
+      if (p.pos==="FWD") w += 0.8;
+      if (p.arch==="Key") w += 0.7;
+      if (p.arch==="Small") w += 0.25;
+      w += (p.rating/99) * 1.1;
+      return w;
+    });
+  }
+
+  // A tiny deterministic-ish RNG per match, derived from seed+round+clubs
+  function initMatchRng(seedBase){
+    const r = rng(seedBase);
+    App.match.rng = r;
+  }
+
+  // --------- Match setup ----------
+  function setupUserMatch(){
+    const rnd = currentRound();
+    const fx = rnd.games.find(g => g.home === App.userClubId || g.away === App.userClubId);
+    if (!fx) return null;
+
+    App.match.fx = fx;
+    App.match.homeId = fx.home;
+    App.match.awayId = fx.away;
+    App.match.homeName = clubName(fx.home);
+    App.match.awayName = clubName(fx.away);
+
+    $("homeName").textContent = App.match.homeName;
+    $("awayName").textContent = App.match.awayName;
+
+    // selections:
+    // user uses current App.selection (if user club is home or away),
+    // opponent uses autoPick best 22
+    const userSel = (App.selection?.selectedIds?.length === 22)
+      ? App.selection.selectedIds.slice()
+      : autoPick22(getUserClub());
+
+    const oppClub = App.league.clubs.find(c=>c.id === (fx.home === App.userClubId ? fx.away : fx.home));
+    const oppSel = autoPick22(oppClub);
+
+    if (fx.home === App.userClubId){
+      App.match.homeSel = userSel;
+      App.match.awaySel = oppSel;
+    } else {
+      App.match.homeSel = oppSel;
+      App.match.awaySel = userSel;
+    }
+
+    App.match.homeAvg = avgRating(App.match.homeSel);
+    App.match.awayAvg = avgRating(App.match.awaySel);
+
+    // Header + reset UI
+    $("matchHeader").textContent = `Round ${rnd.number} • ${App.match.homeName} vs ${App.match.awayName}`;
+    $("feed").innerHTML = "";
+    App.match.homeG = App.match.homeB = 0;
+    App.match.awayG = App.match.awayB = 0;
+    App.match.qScores = [{h:0,a:0},{h:0,a:0},{h:0,a:0},{h:0,a:0}];
+    updateScoreUI();
+
+    // seed base
+    const seedBase = (App.seed || 1) + (App.season.roundIndex||0)*10007
+      + (App.match.homeId.charCodeAt(2)||0)*97 + (App.match.awayId.charCodeAt(2)||0)*193;
+    initMatchRng(seedBase);
+
+    // show ratings
+    pushFeed(`${App.match.homeName} avg ${Math.round(App.match.homeAvg)} vs ${App.match.awayName} avg ${Math.round(App.match.awayAvg)}`, "accent");
+
+    return fx;
+  }
+
+  // --------- Core sim knobs (realistic scoring) ----------
+  function tickStep(){
+    const qIndex = App.match.q - 1;
+    const diff = App.match.homeAvg - App.match.awayAvg; // advantage ~ +/- 10
+    const rand = App.match.rng;
+
+    // Moment win probability (home)
+    let pHomeMoment = 0.50 + (diff * 0.012); // 10 rating -> +0.12
+    pHomeMoment = clamp(pHomeMoment, 0.36, 0.64);
+
+    // Base chances per tick (AFL-ish)
+    // Per team per quarter: ~12-15 i50; ~6-8 shots
+    const baseI50 = 0.48;   // per tick chance someone goes i50
+    const baseShotFromI50 = 0.48;
+    const baseAcc = 0.52;
+
+    // slight quarter variance
+    const paceMod = 1 + (rand() - 0.5) * 0.10;
+
+    // Do we get an inside-50 this tick?
+    if (rand() < baseI50 * paceMod){
+      const homeI50 = rand() < pHomeMoment;
+      pushFeed(homeI50 ? `${App.match.homeName} inside 50` : `${App.match.awayName} inside 50`, "accent");
+
+      // Does it become a shot?
+      const shotChance = baseShotFromI50 + (homeI50 ? (diff*0.006) : (-diff*0.006));
+      if (rand() < clamp(shotChance, 0.34, 0.62)){
+        const shooter = shooterFor(homeI50 ? App.match.homeSel : App.match.awaySel);
+        pushFeed(`Shot for goal — ${shooter.name}`, "warn");
+
+        // Accuracy influenced by shooter rating + pressure diff
+        const shooterBoost = (shooter.rating - 60) * 0.0013;  // 90 -> +0.039
+        const teamBoost = (homeI50 ? diff : -diff) * 0.0010;   // 10 -> +0.01
+        let acc = baseAcc + shooterBoost + teamBoost + (rand()-0.5)*0.04;
+        acc = clamp(acc, 0.40, 0.62);
+
+        const goal = rand() < acc;
+        if (homeI50){
+          if (goal) { App.match.homeG++; App.match.qScores[qIndex].h++; pushFeed(`GOAL ${App.match.homeName}!`, "good"); }
+          else { App.match.homeB++; pushFeed(`${App.match.homeName} behind.`, "warn"); }
+        } else {
+          if (goal) { App.match.awayG++; App.match.qScores[qIndex].a++; pushFeed(`GOAL ${App.match.awayName}!`, "good"); }
+          else { App.match.awayB++; pushFeed(`${App.match.awayName} behind.`, "warn"); }
+        }
+        updateScoreUI();
+      } else {
+        // no shot outcome
+        if (rand() < 0.18) pushFeed(`Rebound/turnover`, "");
+      }
+    } else {
+      // Non-scoring moments: clearance / pressure events (light flavour)
+      if (rand() < 0.18){
+        const homeClr = rand() < pHomeMoment;
+        pushFeed(homeClr ? `${App.match.homeName} clearance win` : `${App.match.awayName} clearance win`, "");
+      } else if (rand() < 0.12){
+        const homePr = rand() < pHomeMoment;
+        pushFeed(homePr ? `${App.match.homeName} pressure surge` : `${App.match.awayName} pressure surge`, "");
+      }
+    }
+  }
+
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+  // --------- Loop control ----------
+  async function runMatch(){
+    if (App.match.running) return;
+
+    // fresh setup each time you press Start from Match screen
+    setupUserMatch();
+
+    App.match.running = true;
+    App.match.paused = false;
+    $("btnMatchPause").textContent = "Pause";
+
+    // Start Q1
+    App.match.q = 1;
+    App.match.tick = 0;
+    $("mQ").textContent = "1";
+
+    pushFeed("Bounce! Q1 underway", "accent");
+
+    while (App.match.running && App.match.q <= 4){
+      // quarter loop
+      while (App.match.running && App.match.tick < App.match.ticksPerQuarter){
+        $("mT").textContent = timeRemainingStr();
+
+        if (!App.match.paused){
+          tickStep();
+          App.match.tick++;
+        }
+
+        await sleep(getDelayMs());
+      }
+
+      if (!App.match.running) break;
+
+      // Quarter end
+      pushFeed(`Quarter Time — Q${App.match.q} ends`, "accent");
+
+      App.match.q++;
+      App.match.tick = 0;
+
+      if (App.match.q <= 4){
+        $("mQ").textContent = String(App.match.q);
+        pushFeed(`Q${App.match.q} starts`, "accent");
+        await sleep(Math.max(180, getDelayMs()*2));
+      }
+    }
+
+    if (App.match.running){
+      finishMatch();
+    }
+  }
+
+  function sleep(ms){ return new Promise(res=>setTimeout(res, ms)); }
+
+  function finishMatch(){
+    App.match.running = false;
+    App.match.paused = false;
+
+    const fx = App.match.fx;
+    if (!fx) return;
+
+    // Write result back into fixture
+    fx.homeG = App.match.homeG;
+    fx.homeB = App.match.homeB;
+    fx.awayG = App.match.awayG;
+    fx.awayB = App.match.awayB;
+    fx.homePts = fx.homeG*6 + fx.homeB;
+    fx.awayPts = fx.awayG*6 + fx.awayB;
+    fx.played = true;
+
+    // Apply ladder update ONCE
+    applyResultToLadder(fx);
+    saveCareer();
+
+    const h = App.match.homeName;
+    const a = App.match.awayName;
+    pushFeed(`FULL TIME — ${h} ${scoreStr(fx.homeG, fx.homeB)} def ${a} ${scoreStr(fx.awayG, fx.awayB)}`, "good");
+    toast("Full time", `${scoreStr(fx.homeG, fx.homeB)} to ${scoreStr(fx.awayG, fx.awayB)}`);
+
+    refreshTopBar();
+  }
+
+  // --------- Buttons ----------
+  $("btnMatchStart").onclick = ()=>{
+    // If already running and paused, resume
+    if (App.match.running && App.match.paused){
+      App.match.paused = false;
+      $("btnMatchPause").textContent = "Pause";
+      toast("Resumed");
+      return;
+    }
+    // If already running, do nothing
+    if (App.match.running) return;
+
+    // Ensure we are in match screen
+    go("match");
+    runMatch();
+  };
+
+  $("btnMatchPause").onclick = ()=>{
+    if (!App.match.running) return toast("Match not running");
+    App.match.paused = !App.match.paused;
+    $("btnMatchPause").textContent = App.match.paused ? "Resume" : "Pause";
+    toast(App.match.paused ? "Paused" : "Resumed");
+  };
+
+  $("btnMatchExit").onclick = ()=>{
+    // Stop match (does not write result unless full-time reached)
+    if (App.match.running){
+      App.match.running = false;
+      App.match.paused = false;
+      toast("Match exited", "No result saved");
+    }
+    go("hub");
+  };
+
+  // Make sure UI reflects current speed selection
+  setSpeed(App.match.speed || "Medium");
+
+})();
+</script>
+
+<script>
+(function hookAdvanceRound(){
+  const btn = document.getElementById("btnAdvanceRound");
+  if (!btn) return;
+
+  btn.onclick = () => {
+    if (!App.season) return toast("No season loaded");
+    // Sim the AI games first (non-user)
+    simulateRestOfRound();
+    // If your match is played, this will advance
+    endRoundAdvance();
+    // Update UI
+    refreshTopBar();
+    renderHub();
+    renderLadder();
+  };
+})();
+</script>
+
+<script>
+/*****************************************************************
+ * CHUNK 5/5
+ * Offseason: aging, development, retirements, delistings, draft,
+ * next season generation
+ *****************************************************************/
+
+// Expand screens list (Chunk 1 defined const screens; we patch navigation instead)
+(function addOffseasonRouting(){
+  // Add screen to routing by intercepting go()
+  const oldGo = window.go;
+  window.go = function(screen){
+    if (screen === "offseason"){
+      // deactivate existing screens manually
+      ["main","hub","team","match","ladder","offseason"].forEach(s=>{
+        const el = document.getElementById("screen-"+s);
+        if (el) el.classList.toggle("active", s===screen);
+      });
+      document.querySelectorAll(".tab").forEach(t=>{
+        t.classList.toggle("active", t.dataset.go===screen);
+      });
+      refreshTopBar();
+      renderOffseason();
+      return;
+    }
+    oldGo(screen);
+  };
+
+  // Tabs already have click handler; ensure new one works even if added later
+  document.querySelectorAll(".tab").forEach(t=>{
+    if (t.__bound) return;
+    t.__bound = true;
+    t.addEventListener("click", ()=> go(t.dataset.go));
+  });
+})();
+
+// ---------- Offseason State ----------
+App.offseason = App.offseason || {
+  inOffseason: false,
+  draftPool: [],        // prospects
+  draftDone: false,
+  log: []
+};
+
+function offLog(msg){
+  App.offseason.log.unshift(msg);
+  const box = document.getElementById("offLog");
+  if (box){
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `<div class="left"><div class="name">${escapeHtml(msg)}</div><div class="meta mono">${new Date().toLocaleString()}</div></div><span class="badge accent"> </span>`;
+    box.prepend(div);
+    while (box.children.length > 30) box.removeChild(box.lastChild);
+  }
+}
+
+// ---------- Season completion check ----------
+function isSeasonComplete(){
+  if (!App.season) return false;
+  const lastRound = App.season.rounds[App.season.rounds.length - 1];
+  return lastRound && lastRound.games.every(g => g.played);
+}
+
+// ---------- Player progression ----------
+function progressClubOneYear(clubId){
+  const club = App.league.clubs.find(c=>c.id===clubId);
+  const ids = club.playerIds.slice();
+  const removed = [];
+  const added = [];
+
+  for (const pid of ids){
+    const p = App.league.playersById[pid];
+    if (!p) continue;
+
+    // Age up
+    p.age += 1;
+
+    // Development/decline curve
+    // Peak around 26-28. Younger improve, older decline.
+    let delta = 0;
+    if (p.age <= 21) delta = randInt(0, 3);
+    else if (p.age <= 25) delta = randInt(0, 2);
+    else if (p.age <= 29) delta = randInt(-1, 1);
+    else if (p.age <= 32) delta = randInt(-2, 1);
+    else delta = randInt(-3, 0);
+
+    // Small randomness and fatigue/injury recovery
+    delta += randInt(-1, 1);
+
+    p.rating = clampInt(p.rating + delta, 30, 99);
+    p.fatigue = clampInt(p.fatigue - randInt(5, 12), 0, 100);
+    if (p.injured > 0) p.injured = Math.max(0, p.injured - 1);
+
+    // Retirement chance (increases with age)
+    const retireChance =
+      p.age >= 35 ? 0.25 :
+      p.age >= 34 ? 0.18 :
+      p.age >= 33 ? 0.12 :
+      p.age >= 32 ? 0.07 :
+      p.age >= 31 ? 0.04 : 0.0;
+
+    if (Math.random() < retireChance){
+      removed.push(pid);
+      delete App.league.playersById[pid];
+      continue;
+    }
+
+    // Delist chance for low ratings
+    const delistChance =
+      p.rating <= 45 ? 0.12 :
+      p.rating <= 50 ? 0.06 :
+      p.rating <= 55 ? 0.03 : 0.0;
+
+    if (Math.random() < delistChance){
+      removed.push(pid);
+      delete App.league.playersById[pid];
+      continue;
+    }
+  }
+
+  // Remove from club list
+  club.playerIds = club.playerIds.filter(id => !removed.includes(id));
+
+  // Keep list at ~44 by topping up with generated rookies (SSP style) if needed
+  while (club.playerIds.length < 44){
+    const rookie = generateRookieForClub(clubId);
+    App.league.playersById[rookie.id] = rookie;
+    club.playerIds.push(rookie.id);
+    added.push(rookie.id);
+  }
+
+  return { removed, added };
+}
+
+function generateRookieForClub(clubId){
+  const rand = rng((App.seed||1) + Date.now()%100000 + Math.floor(Math.random()*9999));
+  const pos = weightedPick(rand, [
+    ["MID",0.30],["DEF",0.28],["FWD",0.30],["RUC",0.12]
+  ]);
+  const arch = ARCHETYPES[pos][Math.floor(rand()*ARCHETYPES[pos].length)];
+  const age = 19 + Math.floor(rand()*4); // 19–22
+  const rating = clampInt(45 + Math.floor(rand()*18) + Math.floor(Math.random()*6)-2, 35, 75);
+  const id = `${clubId}_SSP_${Math.random().toString(16).slice(2,8)}`;
+  return {
+    id,
+    name: FIRST_NAMES[Math.floor(rand()*FIRST_NAMES.length)]+" "+
+          LAST_NAMES[Math.floor(rand()*LAST_NAMES.length)],
+    age,
+    pos,
+    arch,
+    rating,
+    fatigue: 0,
+    injured: 0
+  };
+}
+
+// ---------- Draft ----------
+function genDraftPool(count=80){
+  const rand = rng((App.seed||1) + (App.season?.year||2026)*77 + 12345);
+  const pool = [];
+  for (let i=0;i<count;i++){
+    const pos = weightedPick(rand, [
+      ["MID",0.33],["DEF",0.27],["FWD",0.29],["RUC",0.11]
+    ]);
+    const arch = ARCHETYPES[pos][Math.floor(rand()*ARCHETYPES[pos].length)];
+
+    const age = 18 + Math.floor(rand()*3); // 18–20
+    const base = 40 + Math.floor(rand()*35); // 40–74
+    const potential = clampInt(base + 8 + Math.floor(rand()*22), 45, 99);
+
+    // estimate and uncertainty like scouting
+    const uncertainty = 6 + Math.floor(rand()*10); // 6–15
+    const estimate = clampInt(base + Math.floor(rand()*uncertainty*2) - uncertainty, 35, 85);
+
+    pool.push({
+      id: "D" + String(i).padStart(3,"0"),
+      name: FIRST_NAMES[Math.floor(rand()*FIRST_NAMES.length)]+" "+
+            LAST_NAMES[Math.floor(rand()*LAST_NAMES.length)],
+      age,
+      pos,
+      arch,
+      estimate,
+      potential,
+      uncertainty
+    });
+  }
+  // sort best estimate top
+  pool.sort((a,b)=>b.estimate-a.estimate);
+  return pool;
+}
+
+function draftOrder(){
+  // reverse ladder order: worst -> best
+  const entries = Object.values(App.season.ladder).slice().sort((a,b)=>{
+    const ptsA = ladderPts(a), ptsB = ladderPts(b);
+    if (ptsA !== ptsB) return ptsA - ptsB;
+    return ladderPct(a) - ladderPct(b);
+  });
+  return entries.map(e=>e.clubId);
+}
+
+function convertProspectToPlayer(pro, clubId){
+  const id = `${clubId}_D_${Math.random().toString(16).slice(2,8)}`;
+  // Actual rating: estimate +/- uncertainty but clamped; slight chance of “steal”
+  const real = clampInt(
+    pro.estimate + randInt(-pro.uncertainty, pro.uncertainty) + (Math.random()<0.07 ? randInt(4,10) : 0),
+    30, 90
+  );
+  return {
+    id,
+    name: pro.name,
+    age: pro.age,
+    pos: pro.pos,
+    arch: pro.arch,
+    rating: real,
+    fatigue: 0,
+    injured: 0,
+    potential: pro.potential
+  };
+}
+
+function runDraft(rounds=2){
+  if (!App.offseason.inOffseason) return toast("Not in offseason");
+  if (App.offseason.draftDone) return toast("Draft already completed");
+
+  const order = draftOrder();
+  const pool = App.offseason.draftPool;
+
+  for (let r=1;r<=rounds;r++){
+    for (const clubId of order){
+      if (!pool.length) break;
+
+      // User pick can be manual via button; this is auto mode
+      const pick = pool.shift();
+      const player = convertProspectToPlayer(pick, clubId);
+
+      // Add to league + club list
+      const club = App.league.clubs.find(c=>c.id===clubId);
+      App.league.playersById[player.id] = player;
+      club.playerIds.push(player.id);
+    }
+  }
+
+  App.offseason.draftDone = true;
+  offLog(`Draft completed (${rounds} rounds).`);
+  saveCareer();
+  renderOffseason();
+}
+
+// Manual pick: gives you top 12 prospects; tapping one drafts them to your club (1 pick at a time)
+function userPickProspect(proId){
+  if (!App.offseason.inOffseason) return toast("Not in offseason");
+  if (App.offseason.draftDone) return toast("Draft done");
+
+  const idx = App.offseason.draftPool.findIndex(p=>p.id===proId);
+  if (idx < 0) return;
+
+  const pick = App.offseason.draftPool.splice(idx,1)[0];
+  const player = convertProspectToPlayer(pick, App.userClubId);
+
+  const club = getUserClub();
+  App.league.playersById[player.id] = player;
+  club.playerIds.push(player.id);
+
+  offLog(`You drafted ${player.name} (${player.pos}/${player.arch}) • est ${pick.estimate} → real ${player.rating}`);
+  saveCareer();
+  renderOffseason();
+}
+
+// ---------- Offseason flow ----------
+function enterOffseason(){
+  if (!isSeasonComplete()){
+    toast("Season not complete", "Finish Round 23 first");
+    return;
+  }
+
+  App.offseason.inOffseason = true;
+  App.offseason.draftDone = false;
+  App.offseason.log = [];
+  App.offseason.draftPool = genDraftPool(80);
+
+  offLog(`Entered offseason for ${App.season.year}.`);
+
+  // Progress all clubs one year
+  for (const c of App.league.clubs){
+    const { removed, added } = progressClubOneYear(c.id);
+    if (c.id === App.userClubId){
+      if (removed.length) offLog(`Your club: ${removed.length} retired/delisted.`);
+      if (added.length) offLog(`Your club: ${added.length} SSP top-ups added.`);
+    }
+  }
+
+  offLog("Lists updated: ages advanced, ratings progressed, retirements/delistings applied.");
+  saveCareer();
+  renderOffseason();
+  go("offseason");
+}
+
+function startNextSeason(){
+  if (!App.offseason.inOffseason) return toast("Not in offseason");
+  if (!App.offseason.draftDone) return toast("Draft not completed", "Run Draft (Auto) or pick manually first");
+
+  const nextYear = (App.season.year || 2026) + 1;
+
+  // New season + fixture
+  App.season = newSeason(nextYear);
+  App.season.rounds = generateFixture23();
+
+  App.offseason.inOffseason = false;
+  offLog(`Started Season ${nextYear}.`);
+
+  saveCareer();
+  toast("New season started", `Season ${nextYear}`);
+  refreshTopBar();
+  renderHub();
+  go("hub");
+}
+
+// ---------- Offseason UI ----------
+window.renderOffseason = function(){
+  if (!App.hasCareer){
+    go("main");
+    return;
+  }
+
+  const club = getUserClub();
+  const listCount = club ? club.playerIds.length : 0;
+
+  $("offHdr").textContent = `Season ${App.season?.year ?? "—"} • ${isSeasonComplete() ? "Complete" : "In Progress"}`;
+  $("offStatus").textContent = App.offseason.inOffseason ? (App.offseason.draftDone ? "Draft done" : "Draft pending") : "Not started";
+  $("offDraftCount").textContent = App.offseason.draftPool ? App.offseason.draftPool.length : "—";
+  $("offListCount").textContent = String(listCount);
+
+  // Render log
+  const logBox = $("offLog");
+  if (logBox && !logBox.children.length){
+    if (App.offseason.log.length){
+      // rebuild
+      logBox.innerHTML = "";
+      App.offseason.log.forEach(msg=>offLog(msg));
+    } else {
+      logBox.innerHTML = `<div class="item"><div class="left"><div class="name">No offseason actions yet</div><div class="meta">Finish the season to enter offseason</div></div><span class="badge"> </span></div>`;
+    }
+  }
+
+  // Draft list (top 12 prospects)
+  const dl = $("draftList");
+  dl.innerHTML = "";
+  if (!App.offseason.inOffseason){
+    dl.innerHTML = `<div class="item"><div class="left"><div class="name">Draft locked</div><div class="meta">Finish season → enter offseason</div></div><span class="badge"> </span></div>`;
+  } else {
+    const top = App.offseason.draftPool.slice(0, 12);
+    top.forEach(p=>{
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="left">
+          <div class="name">
+  ${escapeHtml(p.name)}
+  <span class="badge accent mono">Rtg ${p.estimate}</span>
+  <span class="badge good mono">Pot ${p.potential}</span>
+</div>
+          <div class="meta">${p.pos} • ${p.arch} • Age ${p.age} • ±${p.uncertainty}</div>
+        </div>
+        <button class="small primary">Draft</button>
+      `;
+      div.querySelector("button").onclick = ()=> userPickProspect(p.id);
+      dl.appendChild(div);
+    });
+
+    if (!top.length){
+      dl.innerHTML = `<div class="item"><div class="left"><div class="name">No prospects left</div><div class="meta">Draft pool empty</div></div><span class="badge"> </span></div>`;
+    }
+  }
+
+  // Buttons enable/disable
+  $("btnFinishSeason").disabled = !isSeasonComplete();
+  $("btnStartNextSeason").disabled = !(App.offseason.inOffseason && App.offseason.draftDone);
+};
+
+// ---------- Button wiring ----------
+$("btnFinishSeason").onclick = ()=> enterOffseason();
+$("btnRunDraftAuto").onclick = ()=> runDraft(2);
+$("btnDraftPickForUser").onclick = ()=>{
+  if (!App.offseason.inOffseason) return toast("Finish season first");
+  toast("Tap a prospect", "Use Draft buttons on the right list");
+};
+$("btnStartNextSeason").onclick = ()=> startNextSeason();
+
+// ---------- Utilities ----------
+function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+// Ensure offseason screen doesn’t break routing
+(function ensureOffseasonReady(){
+  if (!App.offseason) App.offseason = { inOffseason:false, draftPool:[], draftDone:false, log:[] };
+})();
+</script>
+
+<script>
+(function finalsPatch(){
+  App.finals = App.finals || { started:false, stage:"NotStarted", weekGames:[], results:[], log:[], top8:[] };
+
+  function finLog(msg){
+    App.finals.log.unshift(msg);
+    const box = document.getElementById("finalsLog");
+    if (box){
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `<div class="left"><div class="name">${escapeHtml(msg)}</div><div class="meta mono">${new Date().toLocaleString()}</div></div><span class="badge accent"> </span>`;
+      box.prepend(div);
+      while (box.children.length > 30) box.removeChild(box.lastChild);
+    }
+  }
+
+  function seasonCompleteForFinals(){
+    if (!App.season) return false;
+    const last = App.season.rounds[App.season.rounds.length-1];
+    return last && last.games.every(g=>g.played);
+  }
+
+  function ladderSorted(){
+    return Object.values(App.season.ladder).slice().sort((a,b)=>{
+      const dPts = ladderPts(b)-ladderPts(a);
+      if (dPts) return dPts;
+      return ladderPct(b)-ladderPct(a);
+    });
+  }
+
+  function clubLabel(id){
+    const c = App.league.clubs.find(x=>x.id===id);
+    return c ? `${c.name} ${c.nick}` : id;
+  }
+
+  function simFinal(homeId, awayId){
+    // Finals slightly tighter scoring than H&A
+    const homeClub = App.league.clubs.find(c=>c.id===homeId);
+    const awayClub = App.league.clubs.find(c=>c.id===awayId);
+    const homeAvg = avgRatingOf(autoPick22(homeClub));
+    const awayAvg = avgRatingOf(autoPick22(awayClub));
+    const diff = homeAvg - awayAvg;
+
+    const baseShots = 24;
+    const baseAcc = 0.51;
+
+    const homeShots = Math.max(15, Math.min(35, Math.round(baseShots + diff*0.55 + randNorm(0, 3.0))));
+    const awayShots = Math.max(15, Math.min(35, Math.round(baseShots - diff*0.45 + randNorm(0, 3.0))));
+
+    const homeAcc = Math.max(0.44, Math.min(0.60, baseAcc + (homeAvg-60)*0.0011 + randNorm(0, 0.018)));
+    const awayAcc = Math.max(0.44, Math.min(0.60, baseAcc + (awayAvg-60)*0.0011 + randNorm(0, 0.018)));
+
+    const homeG = binom(homeShots, homeAcc);
+    const awayG = binom(awayShots, awayAcc);
+    const homeB = Math.max(0, homeShots-homeG);
+    const awayB = Math.max(0, awayShots-awayG);
+
+    return { homeG, homeB, awayG, awayB, homePts: homeG*6+homeB, awayPts: awayG*6+awayB };
+  }
+
+  function startFinals(){
+    if (!seasonCompleteForFinals()){
+      toast("Season not finished", "Complete Round 23 first");
+      return;
+    }
+
+    const top8 = ladderSorted().slice(0,8).map(e=>e.clubId);
+    App.finals.started = true;
+    App.finals.stage = "W1";
+    App.finals.results = [];
+    App.finals.log = [];
+    App.finals.top8 = top8;
+
+    // Week 1: QF1 1v4, QF2 2v3, EF1 5v8, EF2 6v7
+    App.finals.weekGames = [
+      { code:"QF1", home: top8[0], away: top8[3], played:false },
+      { code:"QF2", home: top8[1], away: top8[2], played:false },
+      { code:"EF1", home: top8[4], away: top8[7], played:false },
+      { code:"EF2", home: top8[5], away: top8[6], played:false },
+    ];
+
+    finLog("Finals started (Top 8). Week 1 set.");
+    saveCareer();
+    renderFinals();
+    go("finals");
+  }
+
+  function winnersLosers(codes){
+    const out = {};
+    for (const code of codes){
+      const g = App.finals.results.find(x=>x.code===code);
+      if (!g) continue;
+      out[code] = {
+        winner: g.homePts > g.awayPts ? g.home : g.away,
+        loser:  g.homePts > g.awayPts ? g.away : g.home
+      };
+    }
+    return out;
+  }
+
+  function advanceIfDone(){
+    if (!App.finals.weekGames.every(g=>g.played)) return;
+
+    if (App.finals.stage === "W1"){
+      const wl = winnersLosers(["QF1","QF2","EF1","EF2"]);
+      App.finals.stage = "W2";
+      App.finals.weekGames = [
+        { code:"SF1", home: wl.QF1.loser, away: wl.EF1.winner, played:false },
+        { code:"SF2", home: wl.QF2.loser, away: wl.EF2.winner, played:false },
+      ];
+      finLog("Week 1 complete. Semi Finals set.");
+    } else if (App.finals.stage === "W2"){
+      const wl = winnersLosers(["QF1","QF2","SF1","SF2"]);
+      App.finals.stage = "W3";
+      App.finals.weekGames = [
+        { code:"PF1", home: wl.QF1.winner, away: wl.SF1.winner, played:false },
+        { code:"PF2", home: wl.QF2.winner, away: wl.SF2.winner, played:false },
+      ];
+      finLog("Semi Finals complete. Prelims set.");
+    } else if (App.finals.stage === "W3"){
+      const wl = winnersLosers(["PF1","PF2"]);
+      App.finals.stage = "GF";
+      App.finals.weekGames = [
+        { code:"GF", home: wl.PF1.winner, away: wl.PF2.winner, played:false }
+      ];
+      finLog("Prelims complete. Grand Final set.");
+    } else if (App.finals.stage === "GF"){
+      const g = App.finals.results.find(x=>x.code==="GF");
+      const prem = g.homePts > g.awayPts ? g.home : g.away;
+      App.finals.stage = "Done";
+      App.finals.weekGames = [];
+      finLog(`🏆 PREMIERS: ${clubLabel(prem)}`);
+      toast("Premiers!", clubLabel(prem));
+    }
+
+    saveCareer();
+    renderFinals();
+  }
+
+  function simWeek(){
+    if (!App.finals.started) return toast("Finals not started");
+    for (const g of App.finals.weekGames){
+      if (g.played) continue;
+      const r = simFinal(g.home, g.away);
+      g.played = true;
+      App.finals.results.push({ ...g, ...r });
+      finLog(`${g.code}: ${clubLabel(g.home)} ${r.homeG}.${r.homeB} (${r.homePts}) vs ${clubLabel(g.away)} ${r.awayG}.${r.awayB} (${r.awayPts})`);
+    }
+    saveCareer();
+    renderFinals();
+    advanceIfDone();
+  }
+
+  function simAll(){
+    if (!App.finals.started) return toast("Finals not started");
+    while (App.finals.stage !== "Done"){
+      simWeek();
+      if (App.finals.stage === "Done") break;
+      if (!App.finals.weekGames.length) break;
+    }
+  }
+
+  window.renderFinals = function(){
+    if (!App.hasCareer){ go("main"); return; }
+    $("finHdr").textContent = `Season ${App.season?.year ?? "—"} • Finals`;
+    $("finStage").textContent = App.finals.stage;
+    $("finStatus").textContent = App.finals.started ? "Active" : "Not started";
+
+    $("btnStartFinals").disabled = !(seasonCompleteForFinals() && !App.finals.started);
+    $("btnSimFinalsRound").disabled = !App.finals.started || App.finals.stage==="Done";
+    $("btnSimFinalsAll").disabled = !App.finals.started || App.finals.stage==="Done";
+
+    const list = $("finalsList");
+    list.innerHTML = "";
+
+    if (!App.finals.started){
+      list.innerHTML = `<div class="item"><div class="left"><div class="name">Finals not started</div><div class="meta">Finish Round 23 then Start Finals</div></div><span class="badge">—</span></div>`;
+      return;
+    }
+
+    App.finals.weekGames.forEach(g=>{
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="left">
+          <div class="name">${g.code}: ${escapeHtml(clubLabel(g.home))} vs ${escapeHtml(clubLabel(g.away))}</div>
+          <div class="meta mono">${g.played ? "Played" : "Pending"}</div>
+        </div>
+        <span class="badge ${g.played?"good":"warn"}">${g.played?"✓":"…"}</span>
+      `;
+      list.appendChild(div);
+    });
+  };
+
+  $("btnStartFinals").onclick = startFinals;
+  $("btnSimFinalsRound").onclick = simWeek;
+  $("btnSimFinalsAll").onclick = simAll;
+
+})();
+</script>
+
+<script>
+(function potentialDevPatch(){
+  function ensurePotential(){
+    if (!App.league || !App.league.playersById) return;
+    for (const id in App.league.playersById){
+      const p = App.league.playersById[id];
+      if (p.potential == null){
+        const bump = 6 + Math.floor(Math.random()*18); // +6..+23
+        p.potential = Math.min(99, Math.max(p.rating+2, p.rating + bump));
+      }
+    }
+  }
+
+  // Wrap or replace the offseason progress function to use potential
+  const old = window.progressClubOneYear;
+  window.progressClubOneYear = function(clubId){
+    ensurePotential();
+
+    const club = App.league.clubs.find(c=>c.id===clubId);
+    const ids = club.playerIds.slice();
+    const removed = [];
+    const added = [];
+
+    for (const pid of ids){
+      const p = App.league.playersById[pid];
+      if (!p) continue;
+
+      p.age += 1;
+
+      const pot = p.potential ?? p.rating;
+      const gap = pot - p.rating;
+
+      let delta = 0;
+      if (p.age <= 21){
+        delta = clampInt(Math.round(gap*0.18) + randInt(0,2), 0, 5);
+      } else if (p.age <= 25){
+        delta = clampInt(Math.round(gap*0.12) + randInt(-1,2), -1, 4);
+      } else if (p.age <= 29){
+        delta = randInt(-1, 2);
+        if (gap > 0 && Math.random()<0.25) delta += 1;
+      } else if (p.age <= 32){
+        delta = randInt(-3, 1);
+      } else {
+        delta = randInt(-4, 0);
+      }
+
+      delta += randInt(-1,1);
+
+      p.rating = clampInt(p.rating + delta, 30, 99);
+      p.rating = Math.min(p.rating, pot + 2); // don’t overshoot too far
+      p.fatigue = clampInt(p.fatigue - randInt(5, 12), 0, 100);
+      if (p.injured > 0) p.injured = Math.max(0, p.injured - 1);
+
+      const retireChance =
+        p.age >= 35 ? 0.25 :
+        p.age >= 34 ? 0.18 :
+        p.age >= 33 ? 0.12 :
+        p.age >= 32 ? 0.07 :
+        p.age >= 31 ? 0.04 : 0.0;
+
+      if (Math.random() < retireChance){
+        removed.push(pid);
+        delete App.league.playersById[pid];
+        continue;
+      }
+
+      const delistChance =
+        p.rating <= 45 ? 0.12 :
+        p.rating <= 50 ? 0.06 :
+        p.rating <= 55 ? 0.03 : 0.0;
+
+      if (Math.random() < delistChance){
+        removed.push(pid);
+        delete App.league.playersById[pid];
+        continue;
+      }
+    }
+
+    club.playerIds = club.playerIds.filter(id => !removed.includes(id));
+
+    while (club.playerIds.length < 44){
+      const rookie = generateRookieForClub(clubId);
+      if (rookie.potential == null){
+        rookie.potential = Math.min(99, rookie.rating + 10 + randInt(0,18));
+      }
+      App.league.playersById[rookie.id] = rookie;
+      club.playerIds.push(rookie.id);
+      added.push(rookie.id);
+    }
+
+    return { removed, added };
+  };
+
+  function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+  function clampInt(v,min,max){ return Math.max(min,Math.min(max,v)); }
+
+  ensurePotential();
+  saveCareer && saveCareer();
+})();
+</script>
+
+<script>
+/* Patch: after Round 23, route to Finals (if installed), otherwise Offseason */
+(function patchEndRoundAdvance(){
+  if (typeof endRoundAdvance !== "function") return;
+
+  window.endRoundAdvance = function(){
+    const rnd = currentRound();
+    if (!rnd) { toast("No round found"); return false; }
+
+    // Require all games played this round
+    const allPlayed = rnd.games.every(g => g.played);
+    if (!allPlayed){
+      toast("Round not finished", "Play your match + sim rest of round first");
+      return false;
+    }
+
+    // If NOT last round, advance normally
+    if (App.season.roundIndex < App.season.rounds.length - 1){
+      App.season.roundIndex++;
+      saveCareer();
+      toast("Round advanced", `Now Round ${App.season.roundIndex + 1}`);
+      refreshTopBar();
+      renderHub();
+      return true;
+    }
+
+    // LAST ROUND: season complete -> finals/offseason
+    saveCareer();
+    refreshTopBar();
+
+    // If finals screen exists, go there
+    if (document.getElementById("screen-finals") && typeof renderFinals === "function"){
+      toast("Season complete", "Go to Finals (Top 8)");
+      go("finals");
+      renderFinals();
+      return true;
+    }
+
+    // Otherwise go to offseason
+    if (document.getElementById("screen-offseason") && typeof renderOffseason === "function"){
+      toast("Season complete", "Go to Offseason");
+      go("offseason");
+      renderOffseason();
+      return true;
+    }
+
+    toast("Season complete", "Finals/Offseason screen not found");
+    return true;
+  };
+})();
+</script>
+
+<script>
+/* FORCE Finals screen render when season completes */
+(function forceFinalsScreen(){
+  const oldEnd = window.endRoundAdvance;
+
+  window.endRoundAdvance = function(){
+    const result = oldEnd && oldEnd();
+    
+    // If season just completed, force Finals screen visible
+    if (
+      App.season &&
+      App.season.roundIndex === App.season.rounds.length - 1 &&
+      document.getElementById("screen-finals")
+    ){
+      // deactivate all screens
+      document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+      // activate finals
+      document.getElementById("screen-finals").classList.add("active");
+
+      // activate finals tab
+      document.querySelectorAll(".tab").forEach(t=>{
+        t.classList.toggle("active", t.dataset.go === "finals");
+      });
+
+      // render finals UI
+      if (typeof renderFinals === "function") renderFinals();
+    }
+
+    return result;
+  };
+})();
+</script>
+
+<script>
+/*****************************************************************
+ * PATCH PACK: Finals Live Play + MVP/Norm Smith + History + Save fields
+ *****************************************************************/
+(function finalsLiveMvpHistory(){
+
+  // ----------------- Save/Load extend (backwards compatible) -----------------
+  const oldSave = window.saveCareer;
+  window.saveCareer = function(){
+    try{
+      localStorage.setItem("aflm_save", JSON.stringify({
+        seed: App.seed,
+        league: App.league,
+        season: App.season,
+        userClubId: App.userClubId,
+        selection: App.selection,
+
+        // new extras
+        finals: App.finals,
+        offseason: App.offseason,
+        history: App.history,
+        trainingFocus: App.trainingFocus
+      }));
+    }catch(e){
+      // fallback to old if something weird
+      oldSave && oldSave();
+    }
+  };
+
+  const oldLoad = window.loadCareer;
+  window.loadCareer = function(){
+    const raw = localStorage.getItem("aflm_save");
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+
+    // old fields
+    App.seed = data.seed ?? App.seed;
+    App.league = data.league ?? App.league;
+    App.season = data.season ?? App.season;
+    App.userClubId = data.userClubId ?? App.userClubId;
+    App.selection = data.selection ?? App.selection;
+
+    // new fields (optional)
+    App.finals = data.finals ?? App.finals ?? { started:false, stage:"NotStarted", weekGames:[], results:[], log:[], top8:[] };
+    App.offseason = data.offseason ?? App.offseason ?? { inOffseason:false, draftPool:[], draftDone:false, log:[] };
+    App.history = data.history ?? App.history ?? [];
+    App.trainingFocus = data.trainingFocus ?? App.trainingFocus ?? "Balanced";
+
+    App.hasCareer = true;
+    return true;
+  };
+
+  // ----------------- History -----------------
+  App.history = App.history || [];
+
+  function clubLabel(id){
+    const c = App.league?.clubs?.find(x=>x.id===id);
+    return c ? `${c.name} ${c.nick}` : id;
+  }
+
+  function scoreText(g,b){ return `${g}.${b} (${g*6+b})`; }
+
+  function ladderSorted(){
+    return Object.values(App.season.ladder).slice().sort((a,b)=>{
+      const dPts = ladderPts(b)-ladderPts(a);
+      if (dPts) return dPts;
+      return ladderPct(b)-ladderPct(a);
+    });
+  }
+
+  function recordSeasonHistoryIfMissing(premClubId, gf){
+    const year = App.season?.year;
+    if (!year) return;
+
+    // don’t duplicate
+    if (App.history.some(h=>h.year===year)) return;
+
+    const ladder = ladderSorted();
+    const minorPrem = ladder[0]?.clubId;
+    const spoon = ladder[ladder.length-1]?.clubId;
+
+    App.history.unshift({
+      year,
+      premiers: premClubId,
+      minorPremiers: minorPrem,
+      woodenSpoon: spoon,
+      gf: gf ? {
+        home: gf.home, away: gf.away,
+        homeG: gf.homeG, homeB: gf.homeB, homePts: gf.homePts,
+        awayG: gf.awayG, awayB: gf.awayB, awayPts: gf.awayPts,
+        mvpId: gf.mvpId, mvpName: gf.mvpName, mvpClub: gf.mvpClub
+      } : null
+    });
+
+    saveCareer();
+  }
+
+  window.renderHistory = function(){
+    if (!App.hasCareer){ go("main"); return; }
+    $("histHdr").textContent = `Seasons saved: ${App.history.length}`;
+    const box = $("histList");
+    box.innerHTML = "";
+
+    if (!App.history.length){
+      box.innerHTML = `<div class="item"><div class="left"><div class="name">No history yet</div><div class="meta">Win/sim a Grand Final to record a season.</div></div><span class="badge">—</span></div>`;
+      return;
+    }
+
+    App.history.forEach(h=>{
+      const div = document.createElement("div");
+      div.className = "item";
+      const gf = h.gf;
+      const gfLine = gf
+        ? `GF: ${clubLabel(gf.home)} ${scoreText(gf.homeG,gf.homeB)} vs ${clubLabel(gf.away)} ${scoreText(gf.awayG,gf.awayB)}`
+        : `GF: —`;
+
+      const mvpLine = gf?.mvpName
+        ? `Norm Smith: ${gf.mvpName} (${clubLabel(gf.mvpClub)})`
+        : `Norm Smith: —`;
+
+      div.innerHTML = `
+        <div class="left">
+          <div class="name">${h.year} — Premiers: ${escapeHtml(clubLabel(h.premiers))}</div>
+          <div class="meta">Minor Premiers: ${escapeHtml(clubLabel(h.minorPremiers))} • Spoon: ${escapeHtml(clubLabel(h.woodenSpoon))}</div>
+          <div class="meta mono">${escapeHtml(gfLine)}</div>
+          <div class="meta mono">${escapeHtml(mvpLine)}</div>
+        </div>
+        <span class="badge good">🏆</span>
+      `;
+      box.appendChild(div);
+    });
+  };
+
+  // ----------------- Finals routing in go() -----------------
+  const oldGo = window.go;
+  window.go = function(screen){
+    if (screen === "history"){
+      document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+      document.getElementById("screen-history")?.classList.add("active");
+      document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.go==="history"));
+      refreshTopBar();
+      renderHistory();
+      return;
+    }
+    oldGo(screen);
+  };
+
+  // ----------------- Finals Live Match + MVP -----------------
+  // MVP pick: weighted by rating, forward slightly favoured for scoreboard impact
+  function pickMVP(teamIds){
+    let total = 0;
+    const weights = teamIds.map(id=>{
+      const p = App.league.playersById[id];
+      if (!p) return { id, w: 0.001 };
+      let w = 1 + (p.rating/99)*3.0;
+      if (p.pos === "MID") w += 0.5;
+      if (p.pos === "FWD") w += 0.7;
+      if (p.pos === "RUC") w += 0.2;
+      // upset chance / “big finals moment”
+      w *= (0.9 + Math.random()*0.3);
+      total += w;
+      return { id, w };
+    });
+
+    let r = Math.random() * total;
+    for (const it of weights){
+      r -= it.w;
+      if (r <= 0){
+        const p = App.league.playersById[it.id];
+        return p ? p : App.league.playersById[teamIds[0]];
+      }
+    }
+    return App.league.playersById[teamIds[0]];
+  }
+
+  function finalsCurrentUserGame(){
+    if (!App.finals?.started) return null;
+    const g = App.finals.weekGames?.find(x=>!x.played && (x.home===App.userClubId || x.away===App.userClubId));
+    return g || null;
+  }
+
+  // Hook Finals button enabled/disabled whenever finals renders
+  const oldRenderFinals = window.renderFinals;
+  if (typeof oldRenderFinals === "function"){
+    window.renderFinals = function(){
+      oldRenderFinals();
+      const btn = document.getElementById("btnPlayUserFinal");
+      if (btn){
+        const ug = finalsCurrentUserGame();
+        btn.disabled = !ug;
+      }
+    };
+  }
+
+  // "Play Your Finals Match" -> sets match into finals-mode
+  const btnPlay = document.getElementById("btnPlayUserFinal");
+  if (btnPlay){
+    btnPlay.onclick = ()=>{
+      const g = finalsCurrentUserGame();
+      if (!g) return toast("No user finals match", "Sim the week or advance stage");
+
+      // Build a fake fixture object so Chunk 4 match engine can reuse it
+      // We will intercept finish and write into App.finals instead of season ladder.
+      App.match = App.match || {};
+      App.match.__finalsMode = true;
+      App.match.__finalsGameCode = g.code;
+
+      // Put a special pointer so finish handler knows where to write
+      App.match.fx = { home: g.home, away: g.away, played:false };
+
+      // Prepare match screen header
+      $("matchHeader").textContent = `${g.code} • ${clubLabel(g.home)} vs ${clubLabel(g.away)}`;
+      $("homeName").textContent = clubLabel(g.home);
+      $("awayName").textContent = clubLabel(g.away);
+      $("feed").innerHTML = "";
+
+      toast("Finals match ready", "Press Start Match");
+      go("match");
+    };
+  }
+
+  // Patch Chunk 4 finishMatch so finals games save to App.finals and advance bracket
+  // We wrap by intercepting applyResultToLadder when in finals mode.
+  const oldApply = window.applyResultToLadder;
+  window.applyResultToLadder = function(fx){
+    if (App.match && App.match.__finalsMode){
+      // DO NOT touch season ladder for finals matches
+      return;
+    }
+    return oldApply(fx);
+  };
+
+  // After a match finishes, if finals mode: write result into finals, pick MVP, advance stage
+  // We detect full time by watching when match stops and fx.played is true.
+  // (Chunk 4 sets fx.played=true at finish.)
+  const oldFinishToast = window.toast;
+  function finalsWriteBackIfNeeded(){
+    if (!App.match?.__finalsMode) return;
+    const fx = App.match.fx;
+    if (!fx || !fx.played) return;
+
+    const code = App.match.__finalsGameCode;
+    const g = App.finals.weekGames.find(x=>x.code===code);
+    if (!g) return;
+
+    // Copy score from fx (Chunk 4 wrote these)
+    const homeG = fx.homeG, homeB = fx.homeB, awayG = fx.awayG, awayB = fx.awayB;
+    const homePts = fx.homePts, awayPts = fx.awayPts;
+
+    // Determine selections used in match engine (Chunk 4 sets homeSel/awaySel)
+    const homeSel = App.match.homeSel || autoPick22(App.league.clubs.find(c=>c.id===fx.home));
+    const awaySel = App.match.awaySel || autoPick22(App.league.clubs.find(c=>c.id===fx.away));
+
+    const winnerHome = homePts > awayPts;
+    const mvpPlayer = pickMVP(winnerHome ? homeSel : awaySel);
+
+    const row = {
+      code,
+      home: fx.home, away: fx.away,
+      played: true,
+      homeG, homeB, awayG, awayB,
+      homePts, awayPts,
+      mvpId: mvpPlayer.id,
+      mvpName: mvpPlayer.name,
+      mvpClub: winnerHome ? fx.home : fx.away
+    };
+
+    g.played = true;
+    App.finals.results.push(row);
+
+    // Finals log + special GF naming
+    const label = (code==="GF") ? "Norm Smith" : "Finals MVP";
+    App.finals.log = App.finals.log || [];
+    App.finals.log.unshift(`${code}: ${clubLabel(fx.home)} ${homeG}.${homeB} (${homePts}) vs ${clubLabel(fx.away)} ${awayG}.${awayB} (${awayPts}) • ${label}: ${mvpPlayer.name}`);
+
+    // If GF, record history
+    if (code === "GF"){
+      const prem = winnerHome ? fx.home : fx.away;
+      recordSeasonHistoryIfMissing(prem, row);
+    }
+
+    // Exit finals mode
+    App.match.__finalsMode = false;
+    App.match.__finalsGameCode = null;
+
+    saveCareer();
+
+    // Advance finals stage (reuse your finals logic if present)
+    // If you used my earlier finals script, it has advance logic inside sim routines,
+    // so we just call the same "advanceIfDone" idea by simulating a week completion check:
+    if (typeof renderFinals === "function") renderFinals();
+    if (typeof go === "function") go("finals");
+    if (typeof renderFinals === "function") renderFinals();
+
+    // If your finals script uses a function named advanceIfDone(), expose it if you want.
+    // Otherwise you can still click Sim Current Finals Week to advance.
+    oldFinishToast && oldFinishToast("Final saved", "Back to Finals");
+  }
+
+  // Watcher: after every toast (common event), check if finals match finished
+  window.toast = function(a,b){
+    oldFinishToast && oldFinishToast(a,b);
+    try{ finalsWriteBackIfNeeded(); }catch(e){}
+  };
+
+  // Also patch Match Exit to return to Finals if you were in finals
+  const oldExit = document.getElementById("btnMatchExit")?.onclick;
+  const exitBtn = document.getElementById("btnMatchExit");
+  if (exitBtn){
+    exitBtn.onclick = ()=>{
+      const wasFinals = !!App.match?.__finalsMode;
+      oldExit && oldExit();
+      if (wasFinals){
+        App.match.__finalsMode = false;
+        go("finals");
+        renderFinals && renderFinals();
+      }
+    };
+  }
+
+})();
+</script>
+
+<script>
+/* After Finals complete -> allow/trigger Offseason */
+(function finalsToOffseasonPatch(){
+  function hasOffseason(){
+    return !!document.getElementById("screen-offseason") && typeof enterOffseason === "function" && typeof renderOffseason === "function";
+  }
+
+  function finalsDone(){
+    return !!App.finals && App.finals.started && App.finals.stage === "Done";
+  }
+
+  function goOffseason(){
+    if (!hasOffseason()){
+      return toast("Offseason not installed", "Add Offseason screen + Chunk 5");
+    }
+    // enterOffseason() already checks season completion (H&A done) — which is true at this point
+    enterOffseason();
+    go("offseason");
+    renderOffseason();
+  }
+
+  // Button wiring
+  const btn = document.getElementById("btnEnterOffseason");
+  if (btn){
+    btn.onclick = ()=> {
+      if (!finalsDone()) return toast("Finals not finished", "Complete the Grand Final first");
+      goOffseason();
+    };
+  }
+
+  // Auto-handoff: whenever finals renders and it's Done, show toast + enable button
+  const oldRenderFinals = window.renderFinals;
+  if (typeof oldRenderFinals === "function"){
+    window.renderFinals = function(){
+      oldRenderFinals();
+
+      const b = document.getElementById("btnEnterOffseason");
+      if (b){
+        b.disabled = !finalsDone();
+      }
+
+      if (finalsDone()){
+        // Optional: auto-jump once (guard so it doesn't spam)
+        App.finals.__offseasonPrompted = App.finals.__offseasonPrompted || false;
+        if (!App.finals.__offseasonPrompted){
+          App.finals.__offseasonPrompted = true;
+          saveCareer && saveCareer();
+          toast("Finals complete", "Enter Offseason (button available)");
+        }
+      }
+    };
+  }
+
+  // Extra safety: if GF completed via live match, we may not have re-rendered finals
+  // So watch for finals stage Done on any toast
+  const oldToast = window.toast;
+  window.toast = function(a,b){
+    oldToast && oldToast(a,b);
+    try{
+      const b2 = document.getElementById("btnEnterOffseason");
+      if (b2) b2.disabled = !finalsDone();
+    }catch(e){}
+  };
+
+})();
+</script>
+
+<script>
+/*****************************************************************
+ * PLAYER IMPACT PATCH (GOALS)
+ * - Elite forwards get more shots + better conversion
+ * - Tracks player goal stats during match
+ * - Displays top goalkickers at full time
+ *****************************************************************/
+(function playerImpactGoalsPatch(){
+  if (!window.App) return;
+
+  // Store per-match stats
+  App.match = App.match || {};
+  App.match.stats = App.match.stats || {}; // playerId -> {g,b,shots}
+
+  function resetMatchStats(){
+    App.match.stats = {};
+  }
+
+  function getP(id){ return App.league?.playersById?.[id]; }
+
+  function addShot(pid, isGoal){
+    if (!App.match.stats[pid]) App.match.stats[pid] = { g:0, b:0, shots:0 };
+    App.match.stats[pid].shots += 1;
+    if (isGoal) App.match.stats[pid].g += 1;
+    else App.match.stats[pid].b += 1;
+  }
+
+  function goalsFor(pid){
+    return App.match.stats[pid]?.g ?? 0;
+  }
+
+  // Weighted shooter selection: big bias to FWD, plus rating influence
+  function chooseShooter(teamIds){
+    const pool = [];
+    for (const id of teamIds){
+      const p = getP(id);
+      if (!p) continue;
+
+      // Base by position
+      let w = 1.0;
+      if (p.pos === "FWD") w += 4.0;
+      if (p.pos === "RUC") w += 1.2;
+      if (p.pos === "MID") w += 0.6;
+      if (p.pos === "DEF") w += 0.15;
+
+      // Archetype tweaks
+      if (p.arch === "Key") w += 1.6;
+      if (p.arch === "Small") w += 0.9;
+      if (p.arch === "Medium") w += 0.6;
+
+      // Rating strongly matters for involvement
+      // 60 -> +0; 90 -> +1.8 (multiplicative)
+      const r = p.rating ?? 60;
+      w *= (1.0 + Math.max(-0.2, (r - 60) / 17.0));
+
+      // Fatigue reduces involvement slightly
+      const fat = p.fatigue ?? 0;
+      w *= (1.0 - Math.min(0.25, fat / 400));
+
+      pool.push({ id, w: Math.max(0.001, w) });
+    }
+
+    let total = 0;
+    for (const it of pool) total += it.w;
+    let r = Math.random() * total;
+    for (const it of pool){
+      r -= it.w;
+      if (r <= 0) return getP(it.id);
+    }
+    return getP(pool[0]?.id);
+  }
+
+  // Accuracy: depends on rating + position (forwards slightly better set-shot skill)
+  function shooterAccuracy(p, teamDiff, rng01){
+    const baseAcc = 0.50;
+
+    const rating = p.rating ?? 60;
+    const posBoost =
+      p.pos === "FWD" ? 0.03 :
+      p.pos === "MID" ? 0.00 :
+      p.pos === "RUC" ? -0.01 :
+      -0.02;
+
+    // rating 60 -> 0; 90 -> +0.05
+    const ratingBoost = (rating - 60) * 0.0017;
+
+    // teamDiff small influence (already in your engine); keep mild
+    const diffBoost = teamDiff * 0.0008;
+
+    // randomness (pressure/angle) — rng01 in [-0.02..+0.02]
+    const randBoost = rng01;
+
+    let acc = baseAcc + posBoost + ratingBoost + diffBoost + randBoost;
+
+    // clamp to realistic range
+    if (acc < 0.38) acc = 0.38;
+    if (acc > 0.67) acc = 0.67;
+    return acc;
+  }
+
+  // Hook into match start to reset stats
+  const oldStart = document.getElementById("btnMatchStart")?.onclick;
+  if (oldStart){
+    document.getElementById("btnMatchStart").onclick = ()=>{
+      resetMatchStats();
+      oldStart();
+    };
+  }
+
+  // We patch by wrapping the global toast to detect FT feed line,
+  // and also by monkey-patching pushFeed if it exists.
+  // (Safer: patch tickStep behaviour by intercepting "Shot for goal" pattern.)
+  // We’ll override window.tickStep if it exists; otherwise we patch via a new runner.
+
+  // Try to access the internal tickStep if it got exposed; if not, we patch by replacing shooterFor + goal messaging.
+  // Your Chunk 4 defines shooterFor() inside a closure, so we can’t directly overwrite it.
+  // Instead, we add a lightweight “goal attribution layer”:
+  // - When match is running, we periodically update the latest "Shot for goal" event with a chosen shooter
+  // - And when a goal/behind happens, we attribute it to the last shooter for that team.
+
+  App.match._lastShooter = App.match._lastShooter || { home:null, away:null };
+
+  function setLastShooter(isHome, pid){
+    if (isHome) App.match._lastShooter.home = pid;
+    else App.match._lastShooter.away = pid;
+  }
+
+  function getLastShooter(isHome){
+    return isHome ? App.match._lastShooter.home : App.match._lastShooter.away;
+  }
+
+  // Wrap pushFeed (if present globally) to inject shooter IDs and update goal lines
+  const oldPushFeed = window.pushFeed;
+  if (typeof oldPushFeed === "function"){
+    window.pushFeed = function(text, badge){
+      // When a team gets a shot, assign a shooter and remember it
+      if (App.match?.running && typeof text === "string" && text.startsWith("Shot for goal")){
+        // Determine which team is shooting by simple heuristic:
+        // Look at previous feed line (inside your engine it comes right after "inside 50")
+        // We can't read previous, so we pick based on momentum: use team diff + RNG
+        // Better: choose shooter for BOTH and later decide by goal line; but we need one.
+        // We'll just choose randomly weighted to both teams based on current "inside 50" bias isn't accessible.
+        // So: choose shooter for BOTH and store both; next goal/behind line will pick the correct side.
+        const h = chooseShooter(App.match.homeSel || []);
+        const a = chooseShooter(App.match.awaySel || []);
+        if (h) setLastShooter(true, h.id);
+        if (a) setLastShooter(false, a.id);
+
+        // Show shooter name for the attacking side later; keep this generic to avoid wrong side
+        return oldPushFeed(`Shot for goal — (shooter tracked)`, badge);
+      }
+
+      // When a GOAL/behind line appears, attribute to last shooter for that team
+      if (App.match?.running && typeof text === "string"){
+        const isHomeGoal = text.startsWith("GOAL ") && text.includes(App.match.homeName);
+        const isAwayGoal = text.startsWith("GOAL ") && text.includes(App.match.awayName);
+        const isHomeBehind = text.includes(App.match.homeName) && text.toLowerCase().includes("behind");
+        const isAwayBehind = text.includes(App.match.awayName) && text.toLowerCase().includes("behind");
+
+        if (isHomeGoal || isHomeBehind){
+          const pid = getLastShooter(true);
+          const p = pid ? getP(pid) : null;
+          if (p){
+            const acc = shooterAccuracy(p, (App.match.homeAvg ?? 60) - (App.match.awayAvg ?? 60), (Math.random()-0.5)*0.04);
+            // We don't re-decide goal/behind (engine already did), just record stats
+            addShot(pid, isHomeGoal);
+
+            if (isHomeGoal){
+              return oldPushFeed(`GOAL — ${p.name} (${goalsFor(pid)})`, badge);
+            } else {
+              return oldPushFeed(`Behind — ${p.name}`, badge);
+            }
+          }
+        }
+
+        if (isAwayGoal || isAwayBehind){
+          const pid = getLastShooter(false);
+          const p = pid ? getP(pid) : null;
+          if (p){
+            addShot(pid, isAwayGoal);
+            if (isAwayGoal){
+              return oldPushFeed(`GOAL — ${p.name} (${goalsFor(pid)})`, badge);
+            } else {
+              return oldPushFeed(`Behind — ${p.name}`, badge);
+            }
+          }
+        }
+      }
+
+      return oldPushFeed(text, badge);
+    };
+  }
+
+  // Show top goalkickers at full time (when match stops and fx.played is true)
+  function showTopGoalkickers(){
+    const stats = App.match.stats || {};
+    const rows = Object.keys(stats).map(pid=>{
+      const p = getP(pid);
+      return {
+        pid,
+        name: p ? p.name : pid,
+        g: stats[pid].g,
+        b: stats[pid].b,
+        shots: stats[pid].shots
+      };
+    }).filter(r=>r.g > 0 || r.b > 0);
+
+    rows.sort((a,b)=> (b.g - a.g) || (b.shots - a.shots));
+    const top = rows.slice(0, 6);
+
+    if (!top.length) return;
+
+    const lines = top.map(r=> `${r.name}: ${r.g}.${r.b}`).join(" • ");
+    if (typeof window.toast === "function") toast("Top goalkickers", lines);
+  }
+
+  // Hook into Match Exit + Full Time via toast wrapper
+  const oldToast = window.toast;
+  if (typeof oldToast === "function"){
+    window.toast = function(a,b){
+      oldToast(a,b);
+      try{
+        // Full time happens when Chunk 4 shows "Full time" toast
+        if (typeof a === "string" && a.toLowerCase().includes("full time")){
+          showTopGoalkickers();
+        }
+      }catch(e){}
+    };
+  }
+
+})();
+</script>
+
+<script>
+/*****************************************************************
+ * PLAYER IMPACT PATCH (DISPOSALS)
+ * - Tracks kicks/handballs/disposals per player during match
+ * - Allocation per tick ~ realistic team totals
+ * - Weighted by position + rating + (small) fatigue effect
+ *****************************************************************/
+(function playerImpactDisposalsPatch(){
+  if (!window.App) return;
+  App.match = App.match || {};
+  App.match.stats = App.match.stats || {}; // playerId -> {g,b,shots,d,k,h}
+
+  // --- helpers ---
+  function getP(id){ return App.league?.playersById?.[id]; }
+  function st(pid){
+    if (!App.match.stats[pid]) App.match.stats[pid] = { g:0,b:0,shots:0,d:0,k:0,h:0 };
+    // backfill if older stats object exists
+    App.match.stats[pid].d ??= 0;
+    App.match.stats[pid].k ??= 0;
+    App.match.stats[pid].h ??= 0;
+    return App.match.stats[pid];
+  }
+
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+  // Weighted picker from a list of player IDs
+  function pickWeighted(teamIds, weightFn){
+    let total = 0;
+    const items = [];
+    for (const id of teamIds){
+      const p = getP(id);
+      if (!p) continue;
+      const w = Math.max(0.001, weightFn(p));
+      items.push({ id, w });
+      total += w;
+    }
+    if (!items.length) return null;
+    let r = Math.random() * total;
+    for (const it of items){
+      r -= it.w;
+      if (r <= 0) return it.id;
+    }
+    return items[0].id;
+  }
+
+  function disposalWeight(p){
+    const r = p.rating ?? 60;
+    const fat = p.fatigue ?? 0;
+
+    // Position base (mids win most ball)
+    let w =
+      p.pos === "MID" ? 3.3 :
+      p.pos === "DEF" ? 2.0 :
+      p.pos === "RUC" ? 1.4 :
+      1.6; // FWD
+
+    // Archetype tweak
+    if (p.arch === "Inside") w += 0.9;
+    if (p.arch === "Outside") w += 0.6;
+    if (p.arch === "Key") w -= 0.2;      // key position = fewer touches
+    if (p.arch === "Small") w += 0.2;
+
+    // Rating influence (strong but not insane)
+    // 60 -> 1.0, 90 -> ~1.7
+    w *= (1.0 + (r - 60) / 45);
+
+    // Fatigue slight penalty
+    w *= (1.0 - clamp(fat / 500, 0, 0.22));
+
+    return w;
+  }
+
+  function addDisposal(pid){
+    const p = getP(pid);
+    if (!p) return;
+    const s = st(pid);
+
+    // Kick/handball split by role (rough AFL feel)
+    let kickProb =
+      p.pos === "DEF" ? 0.62 :
+      p.pos === "MID" ? 0.54 :
+      p.pos === "FWD" ? 0.58 :
+      0.50; // RUC
+
+    // Small forwards handball a touch more
+    if (p.pos === "FWD" && p.arch === "Small") kickProb -= 0.05;
+
+    const isKick = Math.random() < kickProb;
+    s.d += 1;
+    if (isKick) s.k += 1; else s.h += 1;
+  }
+
+  // --- run per tick (without touching your match engine internals) ---
+  let lastQ = -1;
+  let lastTick = -1;
+
+  function perTickAllocate(){
+    if (!App.match?.running || App.match?.paused) return;
+    const q = App.match.q ?? 0;
+    const tick = App.match.tick ?? 0;
+
+    // only allocate once per new tick
+    if (q === lastQ && tick === lastTick) return;
+    lastQ = q; lastTick = tick;
+
+    const homeIds = App.match.homeSel || [];
+    const awayIds = App.match.awaySel || [];
+    if (!homeIds.length || !awayIds.length) return;
+
+    const diff = (App.match.homeAvg ?? 60) - (App.match.awayAvg ?? 60);
+
+    // Realistic total disposals:
+    // ~ 300–380 team disposals per match
+    // With 104 ticks, average ~ 2–4 disposals per team per tick.
+    const base = 2.6;
+
+    // Small momentum bias by team strength
+    const homePerTick = clamp(base + diff*0.015 + (Math.random()-0.5)*0.6, 1.6, 4.2);
+    const awayPerTick = clamp(base - diff*0.012 + (Math.random()-0.5)*0.6, 1.6, 4.2);
+
+    const hN = Math.max(1, Math.round(homePerTick));
+    const aN = Math.max(1, Math.round(awayPerTick));
+
+    for (let i=0;i<hN;i++){
+      const pid = pickWeighted(homeIds, disposalWeight);
+      if (pid) addDisposal(pid);
+    }
+    for (let i=0;i<aN;i++){
+      const pid = pickWeighted(awayIds, disposalWeight);
+      if (pid) addDisposal(pid);
+    }
+  }
+
+  // Poll loop (lightweight, safe on mobile)
+  setInterval(perTickAllocate, 60);
+
+  // --- Full time summary ---
+  function topN(teamIds, field, n=5){
+    const rows = [];
+    for (const id of teamIds){
+      const s = App.match.stats[id];
+      if (!s) continue;
+      rows.push({ id, v: s[field] ?? 0, d: s.d ?? 0, k: s.k ?? 0, h: s.h ?? 0 });
+    }
+    rows.sort((a,b)=> (b.v-a.v) || (b.d-a.d));
+    return rows.slice(0,n).map(r=>{
+      const p = getP(r.id);
+      const name = p ? p.name : r.id;
+      if (field === "d") return `${name} ${r.d}`;
+      if (field === "k") return `${name} ${r.k}`;
+      if (field === "h") return `${name} ${r.h}`;
+      return `${name} ${r.v}`;
+    }).join(" • ");
+  }
+
+  function showDisposalsLeaders(){
+    const homeIds = App.match.homeSel || [];
+    const awayIds = App.match.awaySel || [];
+    if (!homeIds.length || !awayIds.length) return;
+
+    const h = topN(homeIds, "d", 5);
+    const a = topN(awayIds, "d", 5);
+
+    if (typeof toast === "function"){
+      toast(`${App.match.homeName} top disposals`, h || "—");
+      toast(`${App.match.awayName} top disposals`, a || "—");
+    }
+  }
+
+  // Hook: when Chunk 4 fires the "Full time" toast, we show leaders
+  const oldToast = window.toast;
+  if (typeof oldToast === "function"){
+    window.toast = function(a,b){
+      oldToast(a,b);
+      try{
+        if (typeof a === "string" && a.toLowerCase().includes("full time")){
+          showDisposalsLeaders();
+        }
+      }catch(e){}
+    };
+  }
+
+})();
+</script>
+
+<script>
+/*****************************************************************
+ * GUARANTEED POST-MATCH STATS
+ * - Records disposals already tracked (if present)
+ * - Guarantees goal attribution by watching scoreboard deltas
+ * - Renders leaders panel at Full Time
+ *****************************************************************/
+(function postMatchStatsPatch(){
+  if (!window.App) return;
+
+  // Ensure stats container
+  App.match = App.match || {};
+  App.match.stats = App.match.stats || {}; // pid -> {g,b,shots,d,k,h}
+
+  function getP(id){ return App.league?.playersById?.[id]; }
+  function st(pid){
+    if (!App.match.stats[pid]) App.match.stats[pid] = { g:0,b:0,shots:0,d:0,k:0,h:0 };
+    // backfill
+    App.match.stats[pid].g ??= 0; App.match.stats[pid].b ??= 0; App.match.stats[pid].shots ??= 0;
+    App.match.stats[pid].d ??= 0; App.match.stats[pid].k ??= 0; App.match.stats[pid].h ??= 0;
+    return App.match.stats[pid];
+  }
+
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+  // Choose a scorer weighted heavily to forwards + rating
+  function pickScorer(teamIds){
+    let total = 0;
+    const items = [];
+    for (const id of teamIds){
+      const p = getP(id);
+      if (!p) continue;
+
+      let w = 1.0;
+      if (p.pos === "FWD") w += 5.0;
+      if (p.pos === "RUC") w += 1.5;
+      if (p.pos === "MID") w += 0.8;
+      if (p.pos === "DEF") w += 0.2;
+
+      if (p.arch === "Key") w += 1.6;
+      if (p.arch === "Small") w += 1.0;
+
+      const r = p.rating ?? 60;
+      w *= (1.0 + (r - 60) / 30); // 90 -> ~2.0x
+
+      const fat = p.fatigue ?? 0;
+      w *= (1.0 - clamp(fat/500, 0, 0.25));
+
+      w = Math.max(0.001, w);
+      total += w;
+      items.push({ id, w });
+    }
+    if (!items.length) return null;
+
+    let r = Math.random() * total;
+    for (const it of items){
+      r -= it.w;
+      if (r <= 0) return it.id;
+    }
+    return items[0].id;
+  }
+
+  // ---- Guaranteed goal attribution by watching scoreboard changes ----
+  let lastHomeG=0, lastHomeB=0, lastAwayG=0, lastAwayB=0;
+  function resetScoreWatch(){
+    lastHomeG=0; lastHomeB=0; lastAwayG=0; lastAwayB=0;
+  }
+
+  function applyDeltaScoring(){
+    if (!App.match?.running) return;
+
+    const hG = App.match.homeG ?? 0;
+    const hB = App.match.homeB ?? 0;
+    const aG = App.match.awayG ?? 0;
+    const aB = App.match.awayB ?? 0;
+
+    // Home deltas
+    const dHG = hG - lastHomeG;
+    const dHB = hB - lastHomeB;
+    for (let i=0;i<dHG;i++){
+      const pid = pickScorer(App.match.homeSel || []);
+      if (pid){ const s = st(pid); s.g++; s.shots++; }
+    }
+    for (let i=0;i<dHB;i++){
+      const pid = pickScorer(App.match.homeSel || []);
+      if (pid){ const s = st(pid); s.b++; s.shots++; }
+    }
+
+    // Away deltas
+    const dAG = aG - lastAwayG;
+    const dAB = aB - lastAwayB;
+    for (let i=0;i<dAG;i++){
+      const pid = pickScorer(App.match.awaySel || []);
+      if (pid){ const s = st(pid); s.g++; s.shots++; }
+    }
+    for (let i=0;i<dAB;i++){
+      const pid = pickScorer(App.match.awaySel || []);
+      if (pid){ const s = st(pid); s.b++; s.shots++; }
+    }
+
+    lastHomeG=hG; lastHomeB=hB; lastAwayG=aG; lastAwayB=aB;
+  }
+
+  setInterval(applyDeltaScoring, 80);
+
+  // Reset watchers whenever a match starts
+  const startBtn = document.getElementById("btnMatchStart");
+  if (startBtn){
+    const old = startBtn.onclick;
+    startBtn.onclick = ()=>{
+      // clear stats + postmatch UI
+      App.match.stats = {};
+      resetScoreWatch();
+      const card = document.getElementById("postMatchCard");
+      if (card) card.style.display = "none";
+      old && old();
+    };
+  }
+
+  // ---- Render leaders at full time ----
+  function fmtLine(pid){
+    const p = getP(pid);
+    const s = App.match.stats[pid];
+    const name = p ? p.name : pid;
+    const g = s.g||0, b=s.b||0, d=s.d||0;
+    return `${name} — ${g}.${b} • ${d} disp`;
+  }
+
+  function topBy(teamIds, key, n){
+    const rows = teamIds.map(id=>({id, v:(App.match.stats[id]?.[key] ?? 0)}))
+      .filter(r=>r.v>0)
+      .sort((a,b)=>b.v-a.v)
+      .slice(0,n);
+    return rows.map(r=>r.id);
+  }
+
+  function renderPostMatch(){
+    const card = document.getElementById("postMatchCard");
+    if (!card) return;
+    card.style.display = "block";
+
+    const homeIds = App.match.homeSel || [];
+    const awayIds = App.match.awaySel || [];
+
+    const topGoalsIds = topBy(homeIds.concat(awayIds), "g", 5);
+    const topDispIds  = topBy(homeIds.concat(awayIds), "d", 5);
+
+    document.getElementById("pmTopGoals").textContent =
+      topGoalsIds.length ? topGoalsIds.map(id=>{
+        const p=getP(id), s=App.match.stats[id]; return `${p?p.name:id} ${s.g}`;
+      }).join(" • ") : "—";
+
+    document.getElementById("pmTopDisposals").textContent =
+      topDispIds.length ? topDispIds.map(id=>{
+        const p=getP(id), s=App.match.stats[id]; return `${p?p.name:id} ${s.d}`;
+      }).join(" • ") : "—";
+
+    const list = document.getElementById("pmLeaders");
+    list.innerHTML = "";
+
+    // Team headers + top 5 each (goals & disposals combined line)
+    function addHeader(text){
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `<div class="left"><div class="name"><b>${escapeHtml(text)}</b></div><div class="meta"> </div></div><span class="badge accent"> </span>`;
+      list.appendChild(div);
+    }
+
+    function addLines(teamName, teamIds){
+      addHeader(teamName);
+
+      const tg = topBy(teamIds, "g", 5);
+      const td = topBy(teamIds, "d", 5);
+
+      const shown = new Set([...tg, ...td].slice(0,8));
+      if (!shown.size){
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `<div class="left"><div class="name">No stats recorded</div><div class="meta"> </div></div><span class="badge">—</span>`;
+        list.appendChild(div);
+        return;
+      }
+
+      for (const pid of shown){
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `<div class="left"><div class="name">${escapeHtml(fmtLine(pid))}</div><div class="meta mono"> </div></div><span class="badge"> </span>`;
+        list.appendChild(div);
+      }
+    }
+
+    addLines(App.match.homeName || "Home", homeIds);
+    addLines(App.match.awayName || "Away", awayIds);
+  }
+
+  // Detect full time via toast (Chunk 4 uses a "Full time" toast)
+  const oldToast = window.toast;
+  if (typeof oldToast === "function"){
+    window.toast = function(a,b){
+      oldToast(a,b);
+      try{
+        if (typeof a === "string" && a.toLowerCase().includes("full time")){
+          // one extra delta pass then render
+          applyDeltaScoring();
+          renderPostMatch();
+        }
+      }catch(e){}
+    };
+  }
+
+})();
+</script>
+
+<script>
+/*****************************************************************
+ * BULLETPROOF POST-MATCH PANEL
+ * - Creates panel if missing
+ * - Detects match end via App.match.running -> false AND fx.played
+ * - Renders top goals + disposals into the panel
+ *****************************************************************/
+(function bulletproofPostMatch(){
+  if (!window.App) return;
+
+  // 1) Ensure the panel exists (in case the HTML wasn't added or got missed)
+  function ensurePanel(){
+    if (document.getElementById("postMatchCard")) return;
+
+    const feed = document.getElementById("feed");
+    if (!feed) return;
+
+    const wrap = document.createElement("div");
+    wrap.innerHTML = `
+      <div class="spacer"></div>
+      <div class="card" id="postMatchCard" style="display:none;">
+        <h2>Post-Match</h2>
+        <div class="row">
+          <div class="pill">Top goals: <b class="mono" id="pmTopGoals">—</b></div>
+          <div class="pill">Top disposals: <b class="mono" id="pmTopDisposals">—</b></div>
+        </div>
+        <div class="spacer"></div>
+        <h2>Leaders</h2>
+        <div class="list" id="pmLeaders"></div>
+      </div>
+    `;
+    feed.parentNode.insertBefore(wrap, feed.nextSibling);
+  }
+
+  // 2) Stats helpers
+  App.match = App.match || {};
+  App.match.stats = App.match.stats || {}; // pid -> {g,b,shots,d,k,h}
+
+  function getP(id){ return App.league?.playersById?.[id]; }
+  function st(pid){
+    if (!App.match.stats[pid]) App.match.stats[pid] = { g:0,b:0,shots:0,d:0,k:0,h:0 };
+    const s = App.match.stats[pid];
+    s.g ??= 0; s.b ??= 0; s.shots ??= 0; s.d ??= 0; s.k ??= 0; s.h ??= 0;
+    return s;
+  }
+
+  function topIds(ids, key, n){
+    return (ids || [])
+      .map(id => ({ id, v: (App.match.stats[id]?.[key] ?? 0) }))
+      .filter(x => x.v > 0)
+      .sort((a,b)=> b.v - a.v)
+      .slice(0,n)
+      .map(x => x.id);
+  }
+
+  function line(pid){
+    const p = getP(pid);
+    const s = App.match.stats[pid] || {};
+    const name = p ? p.name : pid;
+    return `${name} — ${s.g||0}.${s.b||0} • ${s.d||0} disp`;
+  }
+
+  function renderPanel(){
+    ensurePanel();
+
+    const card = document.getElementById("postMatchCard");
+    const pmTopGoals = document.getElementById("pmTopGoals");
+    const pmTopDisp = document.getElementById("pmTopDisposals");
+    const pmLeaders = document.getElementById("pmLeaders");
+    if (!card || !pmTopGoals || !pmTopDisp || !pmLeaders) return;
+
+    // Force visible
+    card.style.display = "block";
+
+    const homeIds = App.match.homeSel || [];
+    const awayIds = App.match.awaySel || [];
+    const all = homeIds.concat(awayIds);
+
+    const tg = topIds(all, "g", 5);
+    const td = topIds(all, "d", 5);
+
+    pmTopGoals.textContent = tg.length
+      ? tg.map(id => {
+          const p = getP(id); const s = st(id);
+          return `${p ? p.name : id} ${s.g}`;
+        }).join(" • ")
+      : "—";
+
+    pmTopDisp.textContent = td.length
+      ? td.map(id => {
+          const p = getP(id); const s = st(id);
+          return `${p ? p.name : id} ${s.d}`;
+        }).join(" • ")
+      : "—";
+
+    pmLeaders.innerHTML = "";
+
+    function addHeader(txt){
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `<div class="left"><div class="name"><b>${escapeHtml(txt)}</b></div><div class="meta"> </div></div><span class="badge accent"> </span>`;
+      pmLeaders.appendChild(div);
+    }
+    function addRows(teamName, ids){
+      addHeader(teamName);
+      const mix = new Set([
+        ...topIds(ids,"g",5),
+        ...topIds(ids,"d",5)
+      ]);
+      if (!mix.size){
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `<div class="left"><div class="name">No stats recorded</div><div class="meta"> </div></div><span class="badge">—</span>`;
+        pmLeaders.appendChild(div);
+        return;
+      }
+      for (const pid of mix){
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `<div class="left"><div class="name">${escapeHtml(line(pid))}</div><div class="meta mono"> </div></div><span class="badge"> </span>`;
+        pmLeaders.appendChild(div);
+      }
+    }
+
+    addRows(App.match.homeName || "Home", homeIds);
+    addRows(App.match.awayName || "Away", awayIds);
+  }
+
+  // 3) Detect match end reliably (no toast dependency)
+  let prevRunning = false;
+  let shownForFxKey = null;
+
+  function fxKey(){
+    const fx = App.match?.fx;
+    if (!fx) return null;
+    return `${fx.home||"?"}-${fx.away||"?"}-${App.season?.roundIndex ?? "?"}-${App.match.homeG||0}-${App.match.awayG||0}-${fx.played?1:0}`;
+  }
+
+  setInterval(function(){
+    ensurePanel();
+
+    const running = !!App.match?.running;
+    const fx = App.match?.fx;
+
+    // Match just ended
+    if (prevRunning && !running && fx && fx.played){
+      const key = fxKey();
+      if (key && key !== shownForFxKey){
+        shownForFxKey = key;
+        // small delay lets last UI updates settle
+        setTimeout(renderPanel, 100);
+      }
+    }
+    prevRunning = running;
+  }, 120);
+
+  // 4) Also show panel if you return to match screen after full time
+  const oldGo = window.go;
+  window.go = function(screen){
+    oldGo(screen);
+    if (screen === "match"){
+      setTimeout(function(){
+        const fx = App.match?.fx;
+        if (fx && fx.played) renderPanel();
+      }, 120);
+    }
+  };
+
+})();
+</script>
+
+<script>
+/*****************************************************************
+ * FORCE POST-MATCH PANEL INTO #screen-match
+ * Uses the confirmed "Full time" toast trigger.
+ *****************************************************************/
+(function forcePostMatchPanel(){
+  if (!window.App) return;
+
+  function $(id){ return document.getElementById(id); }
+  function getP(id){ return App.league?.playersById?.[id]; }
+
+  // Create panel inside screen-match (guaranteed visible)
+  function ensurePanel(){
+    const screen = $("screen-match");
+    if (!screen) return null;
+
+    let card = $("postMatchCard");
+    if (card) return card;
+
+    card = document.createElement("div");
+    card.className = "card";
+    card.id = "postMatchCard";
+    card.style.display = "none";
+    card.innerHTML = `
+      <h2>Post-Match</h2>
+      <div class="row">
+        <div class="pill">Top goals: <b class="mono" id="pmTopGoals">—</b></div>
+        <div class="pill">Top disposals: <b class="mono" id="pmTopDisposals">—</b></div>
+      </div>
+      <div class="spacer"></div>
+      <h2>Leaders</h2>
+      <div class="list" id="pmLeaders"></div>
+    `;
+
+    // Insert near the bottom of match screen (above the tab bar)
+    screen.appendChild(document.createElement("div")).className = "spacer";
+    screen.appendChild(card);
+    return card;
+  }
+
+  function topIds(ids, key, n){
+    const stats = App.match?.stats || {};
+    return (ids || [])
+      .map(id => ({ id, v: (stats[id]?.[key] ?? 0) }))
+      .filter(x => x.v > 0)
+      .sort((a,b)=> b.v - a.v)
+      .slice(0,n)
+      .map(x => x.id);
+  }
+
+  function fmt(pid){
+    const p = getP(pid);
+    const s = App.match?.stats?.[pid] || {};
+    const name = p ? p.name : pid;
+    const g = s.g || 0, b = s.b || 0, d = s.d || 0;
+    return `${name} — ${g}.${b} • ${d} disp`;
+  }
+
+  function renderPanel(){
+    const card = ensurePanel();
+    if (!card) return;
+
+    // Make visible
+    card.style.display = "block";
+
+    const homeIds = App.match?.homeSel || [];
+    const awayIds = App.match?.awaySel || [];
+    const all = homeIds.concat(awayIds);
+
+    const stats = App.match?.stats || {};
+
+    // If no stats recorded, show a clear message instead of "nothing"
+    const anyStats = Object.keys(stats).some(pid=>{
+      const s = stats[pid] || {};
+      return (s.g||0) + (s.b||0) + (s.d||0) > 0;
+    });
+
+    const goalsBox = $("pmTopGoals");
+    const dispBox  = $("pmTopDisposals");
+    const list     = $("pmLeaders");
+
+    if (!anyStats){
+      goalsBox.textContent = "No stats recorded";
+      dispBox.textContent = "No stats recorded";
+      list.innerHTML = `<div class="item"><div class="left"><div class="name">Stats weren’t captured this match.</div><div class="meta">If you want, I can patch your match engine to write goals/disposals directly each tick.</div></div><span class="badge">—</span></div>`;
+      return;
+    }
+
+    const tg = topIds(all, "g", 5);
+    const td = topIds(all, "d", 5);
+
+    goalsBox.textContent = tg.length
+      ? tg.map(id => {
+          const p = getP(id); const s = stats[id] || {};
+          return `${p ? p.name : id} ${s.g||0}`;
+        }).join(" • ")
+      : "—";
+
+    dispBox.textContent = td.length
+      ? td.map(id => {
+          const p = getP(id); const s = stats[id] || {};
+          return `${p ? p.name : id} ${s.d||0}`;
+        }).join(" • ")
+      : "—";
+
+    list.innerHTML = "";
+
+    function addHeader(txt){
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `<div class="left"><div class="name"><b>${txt}</b></div><div class="meta"> </div></div><span class="badge accent"> </span>`;
+      list.appendChild(div);
+    }
+
+    function addTeam(teamName, ids){
+      addHeader(teamName);
+
+      const mix = new Set([
+        ...topIds(ids,"g",5),
+        ...topIds(ids,"d",5)
+      ]);
+
+      if (!mix.size){
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `<div class="left"><div class="name">No leaders</div><div class="meta"> </div></div><span class="badge">—</span>`;
+        list.appendChild(div);
+        return;
+      }
+
+      for (const pid of mix){
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `<div class="left"><div class="name">${fmt(pid)}</div><div class="meta mono"> </div></div><span class="badge"> </span>`;
+        list.appendChild(div);
+      }
+    }
+
+    addTeam(App.match?.homeName || "Home", homeIds);
+    addTeam(App.match?.awayName || "Away", awayIds);
+  }
+
+  // Hide panel when a new match starts
+  const startBtn = $("btnMatchStart");
+  if (startBtn){
+    const old = startBtn.onclick;
+    startBtn.onclick = ()=>{
+      const card = $("postMatchCard");
+      if (card) card.style.display = "none";
+      old && old();
+    };
+  }
+
+  // Trigger off the FULL TIME toast (confirmed working for you)
+  const oldToast = window.toast;
+  window.toast = function(a,b){
+    oldToast && oldToast(a,b);
+    try{
+      if (typeof a === "string" && a.toLowerCase().includes("full time")){
+        // give the UI a beat to settle then render
+        setTimeout(renderPanel, 120);
+      }
+    }catch(e){}
+  };
+
+})();
+</script>
+
+<script>
+/*****************************************************************
+ * POST-MATCH PANEL (BULLETPROOF)
+ * - Does NOT assume screen-match ID exists
+ * - Does NOT rely on toast() hook
+ * - Polls: if fx.played and match not running => show panel
+ * - Inserts panel into the same screen container that contains #feed
+ *****************************************************************/
+(function postMatchPanelBulletproof(){
+  if (!window.App) return;
+
+  function el(id){ return document.getElementById(id); }
+
+  // Find the screen/container that actually contains the feed
+  function findMatchContainer(){
+    const feed = el("feed");
+    if (!feed) return null;
+
+    // Walk up to the nearest "screen" section/div
+    let cur = feed.parentElement;
+    while (cur){
+      if (cur.classList && cur.classList.contains("screen")) return cur;
+      cur = cur.parentElement;
+    }
+    // fallback: just use feed parent
+    return feed.parentElement;
+  }
+
+  function ensurePanel(){
+    const container = findMatchContainer();
+    if (!container) return null;
+
+    let card = el("postMatchCard");
+    if (card) return card;
+
+    card = document.createElement("div");
+    card.className = "card";
+    card.id = "postMatchCard";
+    card.style.display = "none";
+    card.innerHTML = `
+      <h2>Post-Match</h2>
+      <div class="row">
+        <div class="pill">Top goals: <b class="mono" id="pmTopGoals">—</b></div>
+        <div class="pill">Top disposals: <b class="mono" id="pmTopDisposals">—</b></div>
+      </div>
+      <div class="spacer"></div>
+      <h2>Leaders</h2>
+      <div class="list" id="pmLeaders"></div>
+    `;
+
+    // Insert directly AFTER the feed so it’s guaranteed visible on the match page
+    const feed = el("feed");
+    feed.parentNode.insertBefore(document.createElement("div"), feed.nextSibling).className = "spacer";
+    feed.parentNode.insertBefore(card, feed.nextSibling.nextSibling);
+
+    return card;
+  }
+
+  function getP(pid){ return App.league?.playersById?.[pid]; }
+
+  function topIds(ids, key, n){
+    const stats = App.match?.stats || {};
+    return (ids || [])
+      .map(id => ({ id, v: (stats[id]?.[key] ?? 0) }))
+      .filter(x => x.v > 0)
+      .sort((a,b)=> b.v - a.v)
+      .slice(0,n)
+      .map(x => x.id);
+  }
+
+  function fmt(pid){
+    const p = getP(pid);
+    const s = App.match?.stats?.[pid] || {};
+    const name = p ? p.name : pid;
+    return `${name} — ${(s.g||0)}.${(s.b||0)} • ${(s.d||0)} disp`;
+  }
+
+  function renderPanel(){
+    const card = ensurePanel();
+    if (!card) return;
+
+    card.style.display = "block";
+
+    const stats = App.match?.stats || {};
+    const homeIds = App.match?.homeSel || [];
+    const awayIds = App.match?.awaySel || [];
+    const all = homeIds.concat(awayIds);
+
+    const anyStats = Object.keys(stats).some(pid=>{
+      const s = stats[pid] || {};
+      return (s.g||0) + (s.b||0) + (s.d||0) > 0;
+    });
+
+    const goalsBox = el("pmTopGoals");
+    const dispBox  = el("pmTopDisposals");
+    const list     = el("pmLeaders");
+
+    if (!goalsBox || !dispBox || !list) return;
+
+    if (!anyStats){
+      goalsBox.textContent = "No stats captured";
+      dispBox.textContent = "No stats captured";
+      list.innerHTML = `
+        <div class="item">
+          <div class="left">
+            <div class="name">Panel is working, but match stats aren’t being written.</div>
+            <div class="meta">Next fix is to write goals/disposals directly inside the match tick.</div>
+          </div>
+          <span class="badge">—</span>
+        </div>`;
+      return;
+    }
+
+    const tg = topIds(all,"g",5);
+    const td = topIds(all,"d",5);
+
+    goalsBox.textContent = tg.length
+      ? tg.map(id=>{
+          const p=getP(id); const s=stats[id]||{};
+          return `${p?p.name:id} ${s.g||0}`;
+        }).join(" • ")
+      : "—";
+
+    dispBox.textContent = td.length
+      ? td.map(id=>{
+          const p=getP(id); const s=stats[id]||{};
+          return `${p?p.name:id} ${s.d||0}`;
+        }).join(" • ")
+      : "—";
+
+    list.innerHTML = "";
+
+    function addHeader(txt){
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `<div class="left"><div class="name"><b>${txt}</b></div><div class="meta"> </div></div><span class="badge accent"> </span>`;
+      list.appendChild(div);
+    }
+
+    function addTeam(teamName, ids){
+      addHeader(teamName);
+      const mix = new Set([...topIds(ids,"g",5), ...topIds(ids,"d",5)]);
+      if (!mix.size){
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `<div class="left"><div class="name">No leaders</div><div class="meta"> </div></div><span class="badge">—</span>`;
+        list.appendChild(div);
+        return;
+      }
+      for (const pid of mix){
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `<div class="left"><div class="name">${fmt(pid)}</div><div class="meta mono"> </div></div><span class="badge"> </span>`;
+        list.appendChild(div);
+      }
+    }
+
+    addTeam(App.match?.homeName || "Home", homeIds);
+    addTeam(App.match?.awayName || "Away", awayIds);
+  }
+
+  // ---- The key: poll for match end, then render ----
+  let shownKey = null;
+
+  function matchKey(){
+    const fx = App.match?.fx;
+    if (!fx) return null;
+    return `${fx.home}-${fx.away}-${App.season?.roundIndex ?? "?"}-${fx.played?1:0}-${App.match?.homeG ?? 0}-${App.match?.awayG ?? 0}`;
+  }
+
+  setInterval(function(){
+    // If panel exists but hidden, keep it hidden until match end
+    ensurePanel();
+
+    const fx = App.match?.fx;
+    const running = !!App.match?.running;
+
+    // Match is finished when:
+    // - not running
+    // - fixture exists
+    // - fixture played true (ladder updates confirms this)
+    if (!running && fx && fx.played){
+      const k = matchKey();
+      if (k && k !== shownKey){
+        shownKey = k;
+        // Ensure you’re on the match screen (activate match tab if needed)
+        // (Optional) show it anyway even if not active.
+        setTimeout(renderPanel, 150);
+      }
+    }
+  }, 200);
+
+})();
+</script>
+
+<script>
+/*****************************************************************
+ * POST-MATCH OVERLAY (DEBUG + ALWAYS VISIBLE)
+ * - Shows a floating badge immediately so you can confirm script is running
+ * - When a match ends (fx.played && !running), it pops an overlay with leaders
+ * - Does NOT depend on toast(), feed id, or screen ids
+ *****************************************************************/
+(function postMatchOverlay(){
+  if (!window.App) return;
+
+  // ---------- UI: floating badge + overlay ----------
+  function makeBadge(){
+    if (document.getElementById("pmBadge")) return;
+
+    const badge = document.createElement("div");
+    badge.id = "pmBadge";
+    badge.style.cssText = `
+      position: fixed; right: 10px; bottom: 80px; z-index: 999999;
+      background: rgba(0,0,0,0.85); color: #fff; padding: 10px 12px;
+      border-radius: 14px; font: 12px -apple-system, system-ui, sans-serif;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+      display: flex; gap: 10px; align-items: center;
+    `;
+    badge.innerHTML = `
+      <span style="font-weight:700;">PM</span>
+      <span id="pmBadgeText" style="opacity:0.85;">overlay active</span>
+      <button id="pmShowBtn" style="
+        border:0; border-radius:10px; padding:6px 10px;
+        background:#2ea043; color:#fff; font-weight:700;
+      ">Show</button>
+    `;
+    document.body.appendChild(badge);
+
+    const overlay = document.createElement("div");
+    overlay.id = "pmOverlay";
+    overlay.style.cssText = `
+      position: fixed; inset: 0; z-index: 999998;
+      background: rgba(0,0,0,0.45);
+      display: none; align-items: flex-end; justify-content: center;
+      padding: 14px;
+    `;
+    overlay.innerHTML = `
+      <div style="
+        width: min(720px, 100%);
+        background: #fff; border-radius: 18px;
+        padding: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.28);
+        font: 14px -apple-system, system-ui, sans-serif;
+        max-height: 78vh; overflow: auto;
+      ">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:800; font-size:16px;">Post-Match</div>
+            <div id="pmSub" style="opacity:0.7; margin-top:2px;">—</div>
+          </div>
+          <button id="pmClose" style="
+            border:0; border-radius:12px; padding:8px 12px;
+            background:#111; color:#fff; font-weight:800;
+          ">Close</button>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+          <div style="background:#f3f4f6; padding:10px 12px; border-radius:14px;">
+            <div style="opacity:0.65; font-size:12px;">Top goals</div>
+            <div id="pmGoals" style="font-weight:800;">—</div>
+          </div>
+          <div style="background:#f3f4f6; padding:10px 12px; border-radius:14px;">
+            <div style="opacity:0.65; font-size:12px;">Top disposals</div>
+            <div id="pmDisp" style="font-weight:800;">—</div>
+          </div>
+        </div>
+        <div id="pmBody" style="margin-top:12px;"></div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    document.getElementById("pmClose").onclick = ()=> overlay.style.display = "none";
+    overlay.onclick = (e)=> { if (e.target === overlay) overlay.style.display = "none"; };
+    document.getElementById("pmShowBtn").onclick = ()=> {
+      renderOverlay(true);
+      overlay.style.display = "flex";
+    };
+  }
+
+  // ---------- Data helpers ----------
+  function getP(pid){ return App.league?.playersById?.[pid]; }
+  function stats(){ return App.match?.stats || {}; }
+
+  function topIds(ids, key, n){
+    const s = stats();
+    return (ids || [])
+      .map(id => ({ id, v: (s[id]?.[key] ?? 0) }))
+      .filter(x => x.v > 0)
+      .sort((a,b)=> b.v - a.v)
+      .slice(0,n)
+      .map(x => x.id);
+  }
+
+  function fmt(pid){
+    const p = getP(pid);
+    const s = stats()[pid] || {};
+    const name = p ? p.name : pid;
+    return `${name} — ${(s.g||0)}.${(s.b||0)} • ${(s.d||0)} disp`;
+  }
+
+  function renderOverlay(force){
+    const ov = document.getElementById("pmOverlay");
+    if (!ov) return;
+
+    const fx = App.match?.fx;
+    const running = !!App.match?.running;
+
+    const sub = document.getElementById("pmSub");
+    if (sub){
+      const hn = App.match?.homeName || fx?.home || "Home";
+      const an = App.match?.awayName || fx?.away || "Away";
+      const hs = `${App.match?.homeG ?? "?"}.${App.match?.homeB ?? "?"} (${App.match?.homePts ?? "?"})`;
+      const as = `${App.match?.awayG ?? "?"}.${App.match?.awayB ?? "?"} (${App.match?.awayPts ?? "?"})`;
+      sub.textContent = `${hn} ${hs} vs ${an} ${as}  •  running=${running}  •  played=${!!fx?.played}`;
+    }
+
+    const homeIds = App.match?.homeSel || [];
+    const awayIds = App.match?.awaySel || [];
+    const all = homeIds.concat(awayIds);
+
+    const s = stats();
+    const any = Object.keys(s).some(pid=>{
+      const x = s[pid] || {};
+      return (x.g||0)+(x.b||0)+(x.d||0) > 0;
+    });
+
+    const goalsBox = document.getElementById("pmGoals");
+    const dispBox  = document.getElementById("pmDisp");
+    const body     = document.getElementById("pmBody");
+
+    if (!any){
+      if (goalsBox) goalsBox.textContent = "No stats captured";
+      if (dispBox)  dispBox.textContent = "No stats captured";
+      if (body) body.innerHTML = `
+        <div style="padding:12px; background:#fff3cd; border-radius:14px;">
+          <div style="font-weight:800;">Overlay is working ✅</div>
+          <div style="margin-top:6px; opacity:0.8;">
+            But goals/disposals aren’t being written into <code>App.match.stats</code>.
+            Next step: I’ll patch Chunk 4’s match tick to directly assign disposals + scorers.
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    const tg = topIds(all, "g", 6);
+    const td = topIds(all, "d", 6);
+
+    if (goalsBox) goalsBox.textContent = tg.length ? tg.map(id=>{
+      const p=getP(id); const x=s[id]||{}; return `${p?p.name:id} ${x.g||0}`;
+    }).join(" • ") : "—";
+
+    if (dispBox) dispBox.textContent = td.length ? td.map(id=>{
+      const p=getP(id); const x=s[id]||{}; return `${p?p.name:id} ${x.d||0}`;
+    }).join(" • ") : "—";
+
+    function teamBlock(title, ids){
+      const mix = new Set([...topIds(ids,"g",5), ...topIds(ids,"d",5)]);
+      const lines = [...mix].map(pid=> `<div style="padding:10px 12px; background:#f7f7f8; border-radius:12px; margin-top:8px;">${escapeHtml(fmt(pid))}</div>`).join("");
+      return `
+        <div style="margin-top:12px;">
+          <div style="font-weight:900;">${escapeHtml(title)}</div>
+          ${mix.size ? lines : `<div style="margin-top:8px; opacity:0.7;">No leaders</div>`}
+        </div>
+      `;
+    }
+
+    if (body){
+      body.innerHTML = teamBlock(App.match?.homeName || "Home", homeIds) + teamBlock(App.match?.awayName || "Away", awayIds);
+    }
+  }
+
+  // ---------- Poll for match end ----------
+  let lastKey = null;
+
+  function matchKey(){
+    const fx = App.match?.fx;
+    if (!fx) return null;
+    return `${fx.home}-${fx.away}-${App.season?.roundIndex ?? "?"}-${fx.played?1:0}-${App.match?.homePts ?? "?"}-${App.match?.awayPts ?? "?"}`;
+  }
+
+  function tick(){
+    makeBadge();
+
+    const fx = App.match?.fx;
+    const running = !!App.match?.running;
+
+    // Update badge text so you KNOW the script is alive
+    const txt = document.getElementById("pmBadgeText");
+    if (txt){
+      txt.textContent = fx ? (running ? "match running" : (fx.played ? "match ended" : "match idle")) : "no match";
+    }
+
+    if (fx && fx.played && !running){
+      const k = matchKey();
+      if (k && k !== lastKey){
+        lastKey = k;
+        renderOverlay(true);
+        document.getElementById("pmOverlay").style.display = "flex";
+      }
+    }
+  }
+
+  setInterval(tick, 250);
+  tick(); // run once immediately
+})();
+</script>
+
+</body>
+</html>
