@@ -1,0 +1,1022 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>AFL Manager (Prototype)</title>
+  <style>
+    :root{
+      --bg: #0b0f14;
+      --panel: #101826;
+      --panel2: #0e1521;
+      --text: #e6edf7;
+      --muted: #9fb0c7;
+      --line: rgba(255,255,255,0.08);
+      --good: #46d17a;
+      --bad: #ff5a6a;
+      --warn: #ffcc66;
+      --accent: #7aa7ff;
+      --accent2: #b68cff;
+
+      --r: 14px;
+      --pad: 14px;
+
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bot: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+    }
+
+    *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body{
+      margin: 0;
+      background: radial-gradient(1200px 600px at 20% -10%, rgba(122,167,255,0.18), transparent 40%),
+                  radial-gradient(900px 500px at 90% 10%, rgba(182,140,255,0.14), transparent 45%),
+                  var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow-x: hidden;
+    }
+
+    .app{
+      min-height: 100%;
+      padding: calc(var(--safe-top) + 10px) calc(var(--safe-left) + 12px) calc(var(--safe-bot) + 90px) calc(var(--safe-right) + 12px);
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    header{
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: linear-gradient(to bottom, rgba(11,15,20,0.95), rgba(11,15,20,0.65));
+      backdrop-filter: blur(10px);
+      padding: 10px 0 12px 0;
+      margin-bottom: 10px;
+    }
+
+    .toprow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+    }
+
+    .brand{
+      display:flex;
+      flex-direction:column;
+      gap: 2px;
+    }
+    .brand .title{
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      font-size: 18px;
+      line-height: 1.1;
+    }
+    .brand .sub{
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      background: rgba(16,24,38,0.55);
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--muted);
+      user-select:none;
+      white-space:nowrap;
+    }
+    .pill b{ color: var(--text); font-weight: 700; }
+
+    .row{ display:flex; gap: 10px; flex-wrap: wrap; }
+    .row > * { flex: 1 1 auto; }
+
+    .card{
+      background: linear-gradient(180deg, rgba(16,24,38,0.95), rgba(14,21,33,0.95));
+      border: 1px solid var(--line);
+      border-radius: var(--r);
+      padding: var(--pad);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+    .card h2{
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      letter-spacing: 0.2px;
+    }
+    .card p{
+      margin: 6px 0;
+      color: var(--muted);
+      line-height: 1.4;
+      font-size: 13px;
+    }
+
+    .btnbar{ display:flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    button{
+      appearance:none;
+      border: 1px solid var(--line);
+      background: rgba(16,24,38,0.75);
+      color: var(--text);
+      padding: 12px 12px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 650;
+      letter-spacing: 0.2px;
+      cursor:pointer;
+      flex: 1 1 auto;
+      min-width: 120px;
+    }
+    button:active{ transform: translateY(1px); }
+    button.primary{
+      border-color: rgba(122,167,255,0.55);
+      background: linear-gradient(180deg, rgba(122,167,255,0.22), rgba(122,167,255,0.10));
+    }
+    button.danger{
+      border-color: rgba(255,90,106,0.55);
+      background: linear-gradient(180deg, rgba(255,90,106,0.18), rgba(255,90,106,0.08));
+    }
+    button.small{
+      padding: 9px 10px;
+      font-size: 13px;
+      min-width: 90px;
+    }
+    button:disabled{
+      opacity: 0.45;
+      cursor:not-allowed;
+    }
+
+    .tabs{
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 10px calc(var(--safe-left) + 10px) calc(var(--safe-bot) + 10px) calc(var(--safe-right) + 10px);
+      background: linear-gradient(to top, rgba(11,15,20,0.95), rgba(11,15,20,0.65));
+      backdrop-filter: blur(10px);
+      border-top: 1px solid var(--line);
+      z-index: 20;
+    }
+    .tabs .tabrow{
+      display:flex;
+      gap: 10px;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+    .tab{
+      flex: 1 1 0;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap: 4px;
+      padding: 10px 0;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 12px;
+      user-select:none;
+    }
+    .tab.active{
+      border-color: rgba(122,167,255,0.35);
+      background: rgba(16,24,38,0.55);
+      color: var(--text);
+    }
+    .tab .icon{ font-size: 16px; line-height: 1; }
+
+    .screen{ display:none; }
+    .screen.active{ display:block; }
+
+    .grid2{ display:grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 720px){
+      .grid2{ grid-template-columns: 1fr 1fr; }
+    }
+
+    .list{
+      display:flex;
+      flex-direction:column;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .item{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      padding: 10px 10px;
+      border: 1px solid var(--line);
+      background: rgba(16,24,38,0.45);
+      border-radius: 12px;
+    }
+    .item .left{ display:flex; flex-direction:column; gap: 2px; }
+    .item .name{ font-weight: 750; font-size: 14px; }
+    .item .meta{ color: var(--muted); font-size: 12px; }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .badge.good{ color: var(--good); border-color: rgba(70,209,122,0.35); background: rgba(70,209,122,0.08); }
+    .badge.bad{ color: var(--bad); border-color: rgba(255,90,106,0.35); background: rgba(255,90,106,0.08); }
+    .badge.warn{ color: var(--warn); border-color: rgba(255,204,102,0.35); background: rgba(255,204,102,0.08); }
+    .badge.accent{ color: var(--accent); border-color: rgba(122,167,255,0.35); background: rgba(122,167,255,0.08); }
+
+    table{
+      width: 100%;
+      border-collapse: collapse;
+      overflow:hidden;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(16,24,38,0.35);
+      font-size: 13px;
+    }
+    th, td{
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+    th{ color: var(--muted); font-weight: 700; font-size: 12px; letter-spacing: 0.2px; }
+    tr:last-child td{ border-bottom: none; }
+
+    .mono{ font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+    .right{ text-align:right; }
+
+    .toast{
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: calc(var(--safe-bot) + 78px);
+      max-width: 980px;
+      margin: 0 auto;
+      z-index: 30;
+      display:none;
+    }
+    .toast.show{ display:block; }
+    .toast .card{ padding: 12px; }
+    .toast .msg{ color: var(--text); font-size: 13px; }
+    .toast .hint{ color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+    .seg{
+      display:flex;
+      gap: 8px;
+      border: 1px solid var(--line);
+      background: rgba(16,24,38,0.35);
+      padding: 6px;
+      border-radius: 12px;
+      width: fit-content;
+    }
+    .seg button{
+      border: 1px solid transparent;
+      background: transparent;
+      padding: 8px 10px;
+      border-radius: 10px;
+      min-width: 90px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .seg button.active{
+      border-color: rgba(122,167,255,0.35);
+      background: rgba(122,167,255,0.10);
+      color: var(--text);
+    }
+
+    .hidden{ display:none !important; }
+    .spacer{ height: 10px; }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <div class="toprow">
+        <div class="brand">
+          <div class="title">AFL Manager <span class="badge accent">Prototype</span></div>
+          <div class="sub" id="topSub">No career loaded</div>
+        </div>
+        <div class="pill mono" id="topPill">
+          <span id="pillClub">—</span>
+          <span>•</span>
+          <span id="pillRound">R—</span>
+          <span>•</span>
+          <b id="pillRecord">—</b>
+        </div>
+      </div>
+    </header>
+
+    <!-- SCREEN: MAIN -->
+    <section class="screen active" id="screen-main">
+      <div class="grid2">
+        <div class="card">
+          <h2>New Career</h2>
+          <p>Generated league, generated players, generated draft. One club career. Realistic scoring pace.</p>
+
+          <div class="row">
+            <div class="pill">Seed: <b class="mono" id="seedLabel">20260119</b></div>
+            <div class="pill">Clubs: <b class="mono">18</b></div>
+            <div class="pill">Players/Club: <b class="mono">44</b></div>
+          </div>
+
+          <div class="btnbar">
+            <button class="primary" id="btnNewCareer">Generate League</button>
+            <button id="btnResetAll" class="danger">Reset</button>
+          </div>
+
+          <p class="muted">Tip: if you keep the same seed, you get the same league again (useful for testing).</p>
+        </div>
+
+        <div class="card">
+          <h2>Choose Club</h2>
+          <p>Pick your club after generating the league.</p>
+          <div class="list" id="clubList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN: HUB -->
+    <section class="screen" id="screen-hub">
+      <div class="grid2">
+        <div class="card">
+          <h2>Weekly Hub</h2>
+          <p class="mono" id="hubWeekLine">Season — • Round —</p>
+
+          <div class="spacer"></div>
+          <div class="seg" aria-label="Training focus">
+            <button id="focusBalanced" class="active">Balanced</button>
+            <button id="focusFitness">Fitness</button>
+            <button id="focusSkills">Skills</button>
+            <button id="focusTactics">Tactics</button>
+            <button id="focusRehab">Rehab</button>
+          </div>
+
+          <div class="btnbar">
+            <button class="primary" id="btnAutoPick">Auto Pick Best 22</button>
+            <button class="primary" id="btnPlayMatch">Play This Round (User Match)</button>
+            <button id="btnSimRound">Sim Rest of Round</button>
+          </div>
+
+          <div class="row">
+            <div class="pill">Selected 22: <b class="mono" id="selCount">0</b></div>
+            <div class="pill">Avg Rating: <b class="mono" id="selAvg">—</b></div>
+            <div class="pill">Injuries: <b class="mono" id="injCount">—</b></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Your Squad (Top 12 by rating)</h2>
+          <div class="list" id="squadPreview"></div>
+          <div class="btnbar">
+            <button id="btnGoTeam">Team</button>
+            <button id="btnGoLadder">Ladder</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN: TEAM -->
+    <section class="screen" id="screen-team">
+      <div class="card">
+        <h2>Team Selection</h2>
+        <p>Tap players to toggle selection. Keep it at 22 (prototype will allow over/under for now; we’ll hard-enforce later).</p>
+        <div class="btnbar">
+          <button class="primary" id="btnTeamAutoPick">Auto Pick Best 22</button>
+          <button id="btnTeamClear">Clear</button>
+          <button id="btnTeamBack">Back to Hub</button>
+        </div>
+
+        <div class="row">
+          <div class="pill">Selected: <b class="mono" id="teamSelectedCount">0</b></div>
+          <div class="pill">Avg Rating: <b class="mono" id="teamAvgRating">—</b></div>
+        </div>
+
+        <div class="spacer"></div>
+        <div class="list" id="teamList"></div>
+      </div>
+    </section>
+
+    <!-- SCREEN: MATCH -->
+    <section class="screen" id="screen-match">
+      <div class="grid2">
+        <div class="card">
+          <h2>Match Center</h2>
+          <p class="mono" id="matchHeader">—</p>
+
+          <div class="row">
+            <div class="pill">QTR: <b class="mono" id="mQ">0</b></div>
+            <div class="pill">TIME: <b class="mono" id="mT">—</b></div>
+            <div class="pill">SPEED: <b class="mono" id="mS">Medium</b></div>
+          </div>
+
+          <div class="spacer"></div>
+          <div class="seg" aria-label="Sim speed">
+            <button id="speedSlow">Slow</button>
+            <button id="speedMed" class="active">Medium</button>
+            <button id="speedFast">Fast</button>
+          </div>
+
+          <div class="btnbar">
+            <button class="primary" id="btnMatchStart">Start Match</button>
+            <button id="btnMatchPause">Pause</button>
+            <button id="btnMatchExit">Exit</button>
+          </div>
+
+          <div class="card" style="margin-top:10px; background: rgba(16,24,38,0.35);">
+            <div class="row">
+              <div class="pill mono" style="flex:1">
+                <span id="homeName">HOME</span>
+                <span class="right" style="margin-left:auto"><b id="homeScore">0.0 (0)</b></span>
+              </div>
+              <div class="pill mono" style="flex:1">
+                <span id="awayName">AWAY</span>
+                <span class="right" style="margin-left:auto"><b id="awayScore">0.0 (0)</b></span>
+              </div>
+            </div>
+            <p class="muted" id="quarterLine">Q1: 0-0 • Q2: 0-0 • Q3: 0-0 • Q4: 0-0</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Live Feed</h2>
+          <p>Quarter-by-quarter events. On Fast speed this flies.</p>
+          <div class="list" id="feed"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN: LADDER -->
+    <section class="screen" id="screen-ladder">
+      <div class="card">
+        <h2>Ladder</h2>
+        <div class="btnbar">
+          <button id="btnLadderBack">Back to Hub</button>
+        </div>
+        <div class="spacer"></div>
+        <div style="overflow:auto;">
+          <table id="ladderTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Club</th>
+                <th class="right">P</th>
+                <th class="right">W</th>
+                <th class="right">L</th>
+                <th class="right">D</th>
+                <th class="right">Pts</th>
+                <th class="right">%</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="muted">Finals + offseason + draft screens get added in later chunks.</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- bottom nav -->
+  <nav class="tabs" aria-label="Bottom Navigation">
+    <div class="tabrow">
+      <div class="tab active" data-go="main"><div class="icon">🏁</div><div>Main</div></div>
+      <div class="tab" data-go="hub"><div class="icon">🏟️</div><div>Hub</div></div>
+      <div class="tab" data-go="team"><div class="icon">📋</div><div>Team</div></div>
+      <div class="tab" data-go="match"><div class="icon">⏱️</div><div>Match</div></div>
+      <div class="tab" data-go="ladder"><div class="icon">📊</div><div>Ladder</div></div>
+    </div>
+  </nav>
+
+  <div class="toast" id="toast">
+    <div class="card">
+      <div class="msg" id="toastMsg">—</div>
+      <div class="hint" id="toastHint">—</div>
+    </div>
+  </div>
+
+  <script>
+  /*****************************************************************
+   * AFL Manager Prototype (Chunked Single-File)
+   * Chunk 1/5: UI layout + routing + empty stubs
+   *
+   * Next chunks will fill in:
+   *  - League generation (clubs/players) + save/load
+   *  - Season fixture + ladder logic
+   *  - Match sim + speed toggle (realistic scoring)
+   *  - Draft + offseason
+   *****************************************************************/
+
+  // ---------- Simple App State ----------
+  const App = {
+    seed: 20260119,
+    hasCareer: false,
+    userClubId: null,
+    trainingFocus: "Balanced",
+    // these will be filled in later chunks:
+    league: null,     // { clubs:[], playersById:{} }
+    season: null,     // { year, roundIndex, rounds:[], ladder:{} }
+    selection: null,  // { selectedIds:[] }
+    match: null       // runtime match controller
+  };
+
+  // ---------- DOM Helpers ----------
+  const $ = (id) => document.getElementById(id);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+  function toast(msg, hint=""){
+    $("toastMsg").textContent = msg;
+    $("toastHint").textContent = hint;
+    $("toast").classList.add("show");
+    setTimeout(()=> $("toast").classList.remove("show"), 2200);
+  }
+
+  // ---------- Screen Routing ----------
+  const screens = ["main","hub","team","match","ladder"];
+
+  function go(screen){
+    for (const s of screens){
+      const el = $("screen-" + s);
+      if (!el) continue;
+      el.classList.toggle("active", s === screen);
+    }
+    for (const t of $$(".tab")){
+      t.classList.toggle("active", t.dataset.go === screen);
+    }
+    refreshTopBar();
+    refreshVisibleScreen();
+  }
+
+  // ---------- Top Bar ----------
+  function refreshTopBar(){
+    if (!App.hasCareer){
+      $("topSub").textContent = "No career loaded";
+      $("pillClub").textContent = "—";
+      $("pillRound").textContent = "R—";
+      $("pillRecord").textContent = "—";
+      return;
+    }
+    const club = getUserClub();
+    const roundNo = (App.season?.roundIndex ?? 0) + 1;
+
+    $("topSub").textContent = `Season ${App.season?.year ?? "—"} • Round ${roundNo}`;
+    $("pillClub").textContent = club ? club.name + " " + club.nick : "—";
+    $("pillRound").textContent = "R" + roundNo;
+
+    const rec = getUserRecord();
+    $("pillRecord").textContent = rec ? `${rec.w}-${rec.l}-${rec.d}` : "—";
+  }
+
+  function refreshVisibleScreen(){
+    const active = screens.find(s => $("screen-" + s)?.classList.contains("active")) || "main";
+    if (active === "main") renderMain();
+    if (active === "hub") renderHub();
+    if (active === "team") renderTeam();
+    if (active === "match") renderMatch();
+    if (active === "ladder") renderLadder();
+  }
+
+  // ---------- UI: Main ----------
+  function renderMain(){
+    $("seedLabel").textContent = String(App.seed);
+    const list = $("clubList");
+    list.innerHTML = "";
+    if (!App.hasCareer || !App.league){
+      list.innerHTML = `<div class="item"><div class="left"><div class="name">No league yet</div><div class="meta">Tap “Generate League” first</div></div><span class="badge">—</span></div>`;
+      return;
+    }
+    for (const c of App.league.clubs){
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="left">
+          <div class="name">${escapeHtml(c.name)} ${escapeHtml(c.nick)}</div>
+          <div class="meta mono">Club ID: ${c.id}</div>
+        </div>
+        <button class="small primary">Choose</button>
+      `;
+      div.querySelector("button").addEventListener("click", ()=>{
+        App.userClubId = c.id;
+        toast("Club selected", `${c.name} ${c.nick}`);
+        go("hub");
+      });
+      list.appendChild(div);
+    }
+  }
+
+  // ---------- UI: Hub ----------
+  function renderHub(){
+    if (!App.hasCareer) {
+      toast("Create a career first", "Go to Main → Generate League");
+      go("main");
+      return;
+    }
+
+    const roundNo = (App.season.roundIndex ?? 0) + 1;
+    $("hubWeekLine").textContent = `Season ${App.season.year} • Round ${roundNo}`;
+
+    // focus UI
+    const focusButtons = {
+      Balanced: $("focusBalanced"),
+      Fitness: $("focusFitness"),
+      Skills: $("focusSkills"),
+      Tactics: $("focusTactics"),
+      Rehab: $("focusRehab")
+    };
+    for (const k in focusButtons){
+      focusButtons[k].classList.toggle("active", App.trainingFocus === k);
+    }
+
+    // placeholders until later chunks populate selections + injuries
+    $("selCount").textContent = (App.selection?.selectedIds?.length ?? 0);
+    $("selAvg").textContent = "—";
+    $("injCount").textContent = "—";
+
+    renderSquadPreview();
+  }
+
+  function renderSquadPreview(){
+    const box = $("squadPreview");
+    box.innerHTML = "";
+    if (!App.league || !App.userClubId){
+      box.innerHTML = `<div class="item"><div class="left"><div class="name">No club selected</div><div class="meta">Pick a club on the Main screen</div></div></div>`;
+      return;
+    }
+    // Will be replaced with real player data in Chunk 2
+    box.innerHTML = `<div class="item"><div class="left"><div class="name">Players will appear after Chunk 2</div><div class="meta">We’ll generate ratings (1–99) and list your top players here</div></div></div>`;
+  }
+
+  // ---------- UI: Team ----------
+  function renderTeam(){
+    if (!App.hasCareer) { go("main"); return; }
+    $("teamSelectedCount").textContent = (App.selection?.selectedIds?.length ?? 0);
+    $("teamAvgRating").textContent = "—";
+    $("teamList").innerHTML = `<div class="item"><div class="left"><div class="name">Team screen activates in Chunk 2</div><div class="meta">You’ll be able to tap to select 22</div></div></div>`;
+  }
+
+  // ---------- UI: Match ----------
+  function renderMatch(){
+    if (!App.hasCareer) { go("main"); return; }
+    $("feed").innerHTML = `<div class="item"><div class="left"><div class="name">Match engine loads in Chunk 4</div><div class="meta">Quarter-by-quarter sim with Slow/Medium/Fast</div></div></div>`;
+  }
+
+  // ---------- UI: Ladder ----------
+  function renderLadder(){
+    if (!App.hasCareer) { go("main"); return; }
+    const tbody = $("ladderTable").querySelector("tbody");
+    tbody.innerHTML = `<tr><td colspan="8" style="color: var(--muted);">Ladder loads in Chunk 3</td></tr>`;
+  }
+
+  // ---------- Event wiring ----------
+  // Bottom tabs
+  $$(".tab").forEach(t => t.addEventListener("click", ()=> go(t.dataset.go)));
+
+  // Main buttons
+  $("btnNewCareer").addEventListener("click", ()=>{
+    // will be implemented in Chunk 2
+    toast("Chunk 2 required", "Next we’ll add league + player generation");
+  });
+
+  $("btnResetAll").addEventListener("click", ()=>{
+    Object.assign(App, {
+      hasCareer: false,
+      userClubId: null,
+      trainingFocus: "Balanced",
+      league: null,
+      season: null,
+      selection: null,
+      match: null
+    });
+    toast("Reset complete", "All data cleared");
+    go("main");
+  });
+
+  // Hub focus buttons
+  $("focusBalanced").addEventListener("click", ()=> { App.trainingFocus="Balanced"; renderHub(); });
+  $("focusFitness").addEventListener("click", ()=> { App.trainingFocus="Fitness"; renderHub(); });
+  $("focusSkills").addEventListener("click", ()=> { App.trainingFocus="Skills"; renderHub(); });
+  $("focusTactics").addEventListener("click", ()=> { App.trainingFocus="Tactics"; renderHub(); });
+  $("focusRehab").addEventListener("click", ()=> { App.trainingFocus="Rehab"; renderHub(); });
+
+  // Hub nav
+  $("btnGoTeam").addEventListener("click", ()=> go("team"));
+  $("btnGoLadder").addEventListener("click", ()=> go("ladder"));
+
+  // Hub actions (stubs for now)
+  $("btnAutoPick").addEventListener("click", ()=> toast("Chunk 2 required", "Auto-pick needs generated players"));
+  $("btnPlayMatch").addEventListener("click", ()=> toast("Chunk 4 required", "Match engine comes later"));
+  $("btnSimRound").addEventListener("click", ()=> toast("Chunk 3 required", "Season + fixture comes next"));
+
+  // Team buttons (stubs)
+  $("btnTeamAutoPick").addEventListener("click", ()=> toast("Chunk 2 required", "Auto-pick needs generated players"));
+  $("btnTeamClear").addEventListener("click", ()=> toast("Not ready yet", "Chunk 2 will implement selection"));
+  $("btnTeamBack").addEventListener("click", ()=> go("hub"));
+
+  // Ladder back
+  $("btnLadderBack").addEventListener("click", ()=> go("hub"));
+
+  // Match speed buttons (UI only for now)
+  const speedButtons = { Slow: $("speedSlow"), Medium: $("speedMed"), Fast: $("speedFast") };
+  let uiSpeed = "Medium";
+  function setUiSpeed(s){
+    uiSpeed = s;
+    $("mS").textContent = s;
+    for (const k in speedButtons) speedButtons[k].classList.toggle("active", k===s);
+  }
+  $("speedSlow").addEventListener("click", ()=> setUiSpeed("Slow"));
+  $("speedMed").addEventListener("click", ()=> setUiSpeed("Medium"));
+  $("speedFast").addEventListener("click", ()=> setUiSpeed("Fast"));
+
+  $("btnMatchStart").addEventListener("click", ()=> toast("Chunk 4 required", "Match sim not installed yet"));
+  $("btnMatchPause").addEventListener("click", ()=> toast("Chunk 4 required", "Pause/resume will be added"));
+  $("btnMatchExit").addEventListener("click", ()=> go("hub"));
+
+  // ---------- Utility ----------
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, s => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[s]));
+  }
+
+  function getUserClub(){
+    if (!App.league || !App.userClubId) return null;
+    return App.league.clubs.find(c => c.id === App.userClubId) || null;
+  }
+
+  function getUserRecord(){
+    // Ladder comes in Chunk 3, stub for now
+    return null;
+  }
+
+  // initial paint
+  refreshTopBar();
+  </script>
+
+  <!--
+    ============================================================
+    CHUNK INSERT POINTS (DO NOT DELETE)
+    ============================================================
+
+    [CHUNK 2] Data + League Generation + Save/Load
+    Paste Chunk 2 below this line.
+
+    [CHUNK 3] Season Fixture + Ladder + Round Simulation (AI)
+    Paste Chunk 3 below Chunk 2.
+
+    [CHUNK 4] Match Engine (Quarter-by-quarter) + Speed + Feed
+    Paste Chunk 4 below Chunk 3.
+
+    [CHUNK 5] Draft + Offseason + Progression
+    Paste Chunk 5 below Chunk 4.
+  -->
+
+<script>
+/*****************************************************************
+ * CHUNK 2/5
+ * League generation + players (1–99 ratings)
+ * Auto-pick best 22
+ * Save / Load (localStorage, iPhone safe)
+ *****************************************************************/
+
+// ---------- Constants ----------
+const POSITIONS = ["DEF","MID","FWD","RUC"];
+const ARCHETYPES = {
+  DEF: ["Intercept","Lockdown"],
+  MID: ["Inside","Outside","Wing"],
+  FWD: ["Small","Medium","Key"],
+  RUC: ["Ruck"]
+};
+
+const FIRST_NAMES = ["Jack","Tom","Liam","Noah","Harry","James","Ben","Will","Charlie","Sam","Josh","Luke","Max","Alex","Ryan","Caleb","Oscar","Matt","Nathan","Bailey"];
+const LAST_NAMES  = ["Smith","Jones","Williams","Brown","Wilson","Martin","Taylor","Anderson","Thomas","White","Walker","Scott","King","Green","Baker","Adams","Clark","Hill","Evans","Murphy"];
+
+const CLUB_NAMES = [
+  ["Bayside","Sharks"],["Northern","Rangers"],["Western","Roos"],["Eastern","Falcons"],
+  ["Harbour","Seagulls"],["Gippsland","Giants"],["Riverland","Crows"],["Highlands","Hawks"],
+  ["Coastal","Tigers"],["Outback","Demons"],["Metro","Magpies"],["Southport","Lions"],
+  ["Goldfields","Suns"],["Lakeside","Blues"],["Redwood","Bombers"],["Prairie","Bulldogs"],
+  ["Stonebridge","Saints"],["Ironvale","Power"]
+];
+
+// ---------- RNG ----------
+function rng(seed){
+  let s = seed % 2147483647;
+  return ()=> (s = s * 16807 % 2147483647) / 2147483647;
+}
+
+// ---------- League Generation ----------
+function generateLeague(seed){
+  const rand = rng(seed);
+  const league = { clubs: [], playersById: {} };
+
+  for (let i=0;i<18;i++){
+    const c = {
+      id: "C"+String(i).padStart(2,"0"),
+      name: CLUB_NAMES[i][0],
+      nick: CLUB_NAMES[i][1],
+      playerIds: []
+    };
+    league.clubs.push(c);
+
+    for (let p=0;p<44;p++){
+      const pos = weightedPick(rand, [
+        ["MID",0.32],["DEF",0.27],["FWD",0.29],["RUC",0.12]
+      ]);
+      const arch = ARCHETYPES[pos][Math.floor(rand()*ARCHETYPES[pos].length)];
+
+      const age = 18 + Math.floor(rand()*15); // 18–32
+      const base = 45 + Math.floor(rand()*30); // 45–75
+      const agePeak = 1 - Math.abs(age-27)*0.015;
+
+      let overall = Math.round(base * agePeak);
+      overall = clamp(overall + Math.floor(rand()*7)-3, 35, 90);
+
+      const pid = `${c.id}_P${p}`;
+      const player = {
+        id: pid,
+        name: FIRST_NAMES[Math.floor(rand()*FIRST_NAMES.length)]+" "+
+              LAST_NAMES[Math.floor(rand()*LAST_NAMES.length)],
+        age,
+        pos,
+        arch,
+        rating: overall,
+        fatigue: Math.floor(rand()*10),
+        injured: 0
+      };
+
+      league.playersById[pid] = player;
+      c.playerIds.push(pid);
+    }
+  }
+  return league;
+}
+
+// ---------- Auto Pick Best 22 ----------
+function autoPick22(club){
+  const players = club.playerIds
+    .map(id => App.league.playersById[id])
+    .filter(p => p.injured<=0)
+    .sort((a,b)=>b.rating-a.rating);
+
+  const picked = [];
+  take(players,picked,p=>p.pos==="RUC",1);
+  take(players,picked,p=>p.pos==="DEF",7);
+  take(players,picked,p=>p.pos==="MID",8);
+  take(players,picked,p=>p.pos==="FWD",6);
+
+  while (picked.length<22 && players.length){
+    picked.push(players.shift());
+  }
+  return picked.map(p=>p.id);
+}
+
+function take(src,dst,fn,n){
+  const take = src.filter(fn).slice(0,n);
+  take.forEach(p=>{
+    dst.push(p);
+    src.splice(src.indexOf(p),1);
+  });
+}
+
+// ---------- Save / Load ----------
+function saveCareer(){
+  localStorage.setItem("aflm_save", JSON.stringify({
+    seed: App.seed,
+    league: App.league,
+    season: App.season,
+    userClubId: App.userClubId,
+    selection: App.selection
+  }));
+}
+
+function loadCareer(){
+  const raw = localStorage.getItem("aflm_save");
+  if (!raw) return false;
+  const data = JSON.parse(raw);
+  Object.assign(App, data);
+  App.hasCareer = true;
+  return true;
+}
+
+// ---------- UI Wiring Overrides ----------
+$("btnNewCareer").onclick = ()=>{
+  App.league = generateLeague(App.seed);
+  App.hasCareer = true;
+  App.userClubId = null;
+  App.selection = { selectedIds: [] };
+  saveCareer();
+  toast("League generated","Pick your club");
+  renderMain();
+};
+
+$("btnAutoPick").onclick = ()=>{
+  if (!App.userClubId) return toast("Pick a club first");
+  const club = getUserClub();
+  App.selection.selectedIds = autoPick22(club);
+  saveCareer();
+  toast("Best 22 selected");
+  renderHub();
+};
+
+$("btnTeamAutoPick").onclick = ()=>{
+  if (!App.userClubId) return;
+  App.selection.selectedIds = autoPick22(getUserClub());
+  saveCareer();
+  renderTeam();
+};
+
+// ---------- Render Squad Preview ----------
+function renderSquadPreview(){
+  const box = $("squadPreview");
+  box.innerHTML = "";
+  if (!App.userClubId) return;
+
+  const club = getUserClub();
+  const players = club.playerIds
+    .map(id=>App.league.playersById[id])
+    .sort((a,b)=>b.rating-a.rating)
+    .slice(0,12);
+
+  players.forEach(p=>{
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <div class="left">
+        <div class="name">${escapeHtml(p.name)}</div>
+        <div class="meta">${p.pos} • ${p.arch}</div>
+      </div>
+      <span class="badge accent mono">${p.rating}</span>`;
+    box.appendChild(div);
+  });
+}
+
+// ---------- Render Team ----------
+function renderTeam(){
+  const list = $("teamList");
+  list.innerHTML = "";
+  const club = getUserClub();
+  if (!club) return;
+
+  const sel = new Set(App.selection.selectedIds||[]);
+  let sum=0;
+
+  club.playerIds
+    .map(id=>App.league.playersById[id])
+    .sort((a,b)=>b.rating-a.rating)
+    .forEach(p=>{
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="left">
+          <div class="name">${escapeHtml(p.name)}</div>
+          <div class="meta">${p.pos} • ${p.arch} • Age ${p.age}</div>
+        </div>
+        <span class="badge ${sel.has(p.id)?"good":"accent"} mono">${p.rating}</span>
+      `;
+      div.onclick = ()=>{
+        if (sel.has(p.id)) sel.delete(p.id);
+        else sel.add(p.id);
+        App.selection.selectedIds = Array.from(sel);
+        saveCareer();
+        renderTeam();
+      };
+      list.appendChild(div);
+      if (sel.has(p.id)) sum+=p.rating;
+    });
+
+  $("teamSelectedCount").textContent = sel.size;
+  $("teamAvgRating").textContent = sel.size
+    ? Math.round(sum/sel.size)
+    : "—";
+}
+
+// ---------- Helpers ----------
+function weightedPick(rand, arr){
+  const sum = arr.reduce((a,b)=>a+b[1],0);
+  let r = rand()*sum;
+  for (const [v,w] of arr){
+    r-=w;
+    if (r<=0) return v;
+  }
+  return arr[arr.length-1][0];
+}
+function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
+
+// ---------- Load on start ----------
+if (loadCareer()){
+  toast("Career loaded","Welcome back");
+  renderMain();
+}
+</script>
+
+</body>
+</html>
