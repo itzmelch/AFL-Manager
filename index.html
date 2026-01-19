@@ -366,6 +366,7 @@
             <button class="primary" id="btnAutoPick">Auto Pick Best 22</button>
             <button class="primary" id="btnPlayMatch">Play This Round (User Match)</button>
             <button id="btnSimRound">Sim Rest of Round</button>
+            <button id="btnAdvanceRound">Advance to Next Round</button>
           </div>
 
           <div class="row">
@@ -1187,6 +1188,382 @@ if (loadCareer()){
 
   // Paint once now
   paint();
+})();
+</script>
+
+  <script>
+/*****************************************************************
+ * CHUNK 3/5
+ * Season fixture (23 rounds), ladder, simulate AI games
+ *****************************************************************/
+
+// ---------- Season / Ladder ----------
+function newSeason(year=2026){
+  const season = {
+    year,
+    roundIndex: 0,
+    rounds: [],      // [{ number, games:[{home,away,played,hs,has,as,abs}] }]
+    ladder: {}       // clubId -> entry
+  };
+
+  for (const c of App.league.clubs){
+    season.ladder[c.id] = {
+      clubId: c.id,
+      played: 0, wins: 0, losses: 0, draws: 0,
+      pf: 0, pa: 0
+    };
+  }
+  return season;
+}
+
+function ladderPct(e){
+  return e.pa === 0 ? 999.0 : (e.pf * 100.0) / e.pa;
+}
+
+function ladderPts(e){
+  return e.wins * 4 + e.draws * 2;
+}
+
+function applyResultToLadder(fx){
+  const home = App.season.ladder[fx.home];
+  const away = App.season.ladder[fx.away];
+
+  home.played++; away.played++;
+  home.pf += fx.homePts; home.pa += fx.awayPts;
+  away.pf += fx.awayPts; away.pa += fx.homePts;
+
+  if (fx.homePts > fx.awayPts){ home.wins++; away.losses++; }
+  else if (fx.homePts < fx.awayPts){ away.wins++; home.losses++; }
+  else { home.draws++; away.draws++; }
+}
+
+// ---------- Fixture generation (round-robin base + extra rounds) ----------
+function generateFixture23(){
+  const ids = App.league.clubs.map(c=>c.id);
+  const baseRounds = roundRobin(ids);   // 17 rounds
+  const rounds = [];
+
+  for (let i=0;i<baseRounds.length;i++){
+    rounds.push({ number: i+1, games: baseRounds[i].map(pair=>mkFx(pair[0],pair[1])) });
+  }
+
+  // extra rounds to reach 23
+  while (rounds.length < 23){
+    const lastPairs = new Set();
+    if (rounds.length){
+      for (const g of rounds[rounds.length-1].games){
+        lastPairs.add(normPair(g.home,g.away));
+      }
+    }
+    const extra = randomPairRound(ids, lastPairs);
+    rounds.push({ number: rounds.length+1, games: extra.map(pair=>mkFx(pair[0],pair[1])) });
+  }
+
+  return rounds;
+}
+
+function mkFx(home, away){
+  return { home, away, played:false, homeG:0, homeB:0, awayG:0, awayB:0, homePts:0, awayPts:0 };
+}
+
+function normPair(a,b){ return a < b ? `${a}-${b}` : `${b}-${a}`; }
+
+// Circle method round robin (17 rounds for 18 clubs)
+function roundRobin(ids){
+  const arr = ids.slice();
+  if (arr.length % 2 === 1) arr.push("BYE");
+  const n = arr.length;
+  const rounds = n - 1;
+  const half = n / 2;
+
+  const out = [];
+  let list = arr.slice();
+
+  for (let r=0;r<rounds;r++){
+    const pairs = [];
+    for (let i=0;i<half;i++){
+      const a = list[i];
+      const b = list[n-1-i];
+      if (a === "BYE" || b === "BYE") continue;
+
+      // alternate home/away
+      const flip = (r % 2) === 1;
+      pairs.push(flip ? [b,a] : [a,b]);
+    }
+    out.push(pairs);
+
+    // rotate, keep first fixed
+    const last = list.pop();
+    list.splice(1,0,last);
+  }
+
+  return out;
+}
+
+function randomPairRound(ids, lastPairs){
+  const rand = rng(App.seed + 999 + App.season?.roundIndex*17 || 123);
+  const pool = ids.slice();
+  const pairs = [];
+
+  while (pool.length >= 2){
+    const a = pool.splice(Math.floor(rand()*pool.length),1)[0];
+
+    // choose opponent not in last round if possible
+    let candidates = pool.filter(x => !lastPairs.has(normPair(a,x)));
+    if (candidates.length === 0) candidates = pool;
+
+    const b = candidates[Math.floor(rand()*candidates.length)];
+    pool.splice(pool.indexOf(b),1);
+
+    // coin flip home/away
+    const flip = rand() < 0.5;
+    pairs.push(flip ? [a,b] : [b,a]);
+  }
+  return pairs;
+}
+
+// ---------- Team strength from selected IDs (avg rating only for now) ----------
+function avgRatingOf(ids){
+  if (!ids || !ids.length) return 50;
+  let sum = 0, n=0;
+  for (const id of ids){
+    const p = App.league.playersById[id];
+    if (!p) continue;
+    sum += p.rating;
+    n++;
+  }
+  return n ? (sum/n) : 50;
+}
+
+// ---------- AI game sim (realistic scoring pace) ----------
+function simAIGame(homeId, awayId){
+  // Use best 22 for AI clubs
+  const homeClub = App.league.clubs.find(c=>c.id===homeId);
+  const awayClub = App.league.clubs.find(c=>c.id===awayId);
+
+  const home22 = autoPick22(homeClub);
+  const away22 = autoPick22(awayClub);
+
+  const homeAvg = avgRatingOf(home22); // 35..90 typical
+  const awayAvg = avgRatingOf(away22);
+
+  // Convert rating to advantage
+  const diff = homeAvg - awayAvg; // +/- ~10
+  const baseShots = 25;           // typical team shots
+  const baseAcc = 0.52;           // realistic accuracy
+
+  // Shots influenced by diff + random
+  const homeShots = clampInt(Math.round(baseShots + diff*0.55 + randNorm(0, 3.2)), 16, 36);
+  const awayShots = clampInt(Math.round(baseShots - diff*0.45 + randNorm(0, 3.2)), 16, 36);
+
+  // Accuracy influenced by rating slightly
+  const homeAcc = clamp(baseAcc + (homeAvg-60)*0.0012 + randNorm(0, 0.02), 0.44, 0.60);
+  const awayAcc = clamp(baseAcc + (awayAvg-60)*0.0012 + randNorm(0, 0.02), 0.44, 0.60);
+
+  const homeGoals = binom(homeShots, homeAcc);
+  const awayGoals = binom(awayShots, awayAcc);
+
+  const homeBehinds = Math.max(0, homeShots - homeGoals);
+  const awayBehinds = Math.max(0, awayShots - awayGoals);
+
+  return {
+    homeG: homeGoals, homeB: homeBehinds,
+    awayG: awayGoals, awayB: awayBehinds
+  };
+}
+
+function clampInt(v,min,max){ return Math.max(min,Math.min(max,v)); }
+
+// Gaussian approx
+function randNorm(mean, std){
+  // Box-Muller using deterministic-ish randomness from Math.random() is fine here
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0*Math.PI*v);
+  return mean + z*std;
+}
+
+// Binomial
+function binom(n,p){
+  let x=0;
+  for (let i=0;i<n;i++) if (Math.random() < p) x++;
+  return x;
+}
+
+// ---------- Round simulation ----------
+function currentRound(){
+  return App.season.rounds[App.season.roundIndex];
+}
+
+function simulateRestOfRound(){
+  const rnd = currentRound();
+  if (!rnd) return toast("No round found");
+
+  for (const fx of rnd.games){
+    if (fx.played) continue;
+
+    // Skip user match if present
+    const isUserMatch = (fx.home === App.userClubId || fx.away === App.userClubId);
+    if (isUserMatch) continue;
+
+    const r = simAIGame(fx.home, fx.away);
+    fx.homeG = r.homeG; fx.homeB = r.homeB;
+    fx.awayG = r.awayG; fx.awayB = r.awayB;
+    fx.homePts = r.homeG*6 + r.homeB;
+    fx.awayPts = r.awayG*6 + r.awayB;
+    fx.played = true;
+
+    applyResultToLadder(fx);
+  }
+
+  saveCareer();
+  toast("Sim complete", "Non-user games played");
+  renderLadder();
+  refreshTopBar();
+}
+
+function endRoundAdvance(){
+  // Ensure all games are played (user match must be completed in Chunk 4)
+  const rnd = currentRound();
+  const allPlayed = rnd.games.every(g => g.played);
+  if (!allPlayed){
+    toast("Round not finished", "Play your match first (Chunk 4) or sim all later");
+    return false;
+  }
+
+  if (App.season.roundIndex < App.season.rounds.length - 1){
+    App.season.roundIndex++;
+    saveCareer();
+    toast("Round advanced", `Now Round ${App.season.roundIndex+1}`);
+    refreshTopBar();
+    renderHub();
+    return true;
+  }
+  toast("Season complete", "Finals come in Chunk 5");
+  return true;
+}
+
+// ---------- UI: Ladder render + user record ----------
+window.getUserRecord = function(){
+  if (!App.season || !App.userClubId) return null;
+  const e = App.season.ladder[App.userClubId];
+  if (!e) return null;
+  return { w:e.wins, l:e.losses, d:e.draws };
+};
+
+window.renderLadder = function(){
+  if (!App.hasCareer || !App.season){
+    $("ladderTable").querySelector("tbody").innerHTML = `<tr><td colspan="8" style="color: var(--muted);">No season yet</td></tr>`;
+    return;
+  }
+
+  const entries = Object.values(App.season.ladder)
+    .slice()
+    .sort((a,b)=>{
+      const dPts = ladderPts(b) - ladderPts(a);
+      if (dPts !== 0) return dPts;
+      return ladderPct(b) - ladderPct(a);
+    });
+
+  const tbody = $("ladderTable").querySelector("tbody");
+  tbody.innerHTML = "";
+
+  entries.forEach((e, idx)=>{
+    const club = App.league.clubs.find(c=>c.id===e.clubId);
+    const tr = document.createElement("tr");
+    const isUser = e.clubId === App.userClubId;
+    tr.innerHTML = `
+      <td class="mono">${idx+1}</td>
+      <td>${escapeHtml(club.name)} ${escapeHtml(club.nick)} ${isUser ? '<span class="badge good">YOU</span>' : ''}</td>
+      <td class="right mono">${e.played}</td>
+      <td class="right mono">${e.wins}</td>
+      <td class="right mono">${e.losses}</td>
+      <td class="right mono">${e.draws}</td>
+      <td class="right mono">${ladderPts(e)}</td>
+      <td class="right mono">${ladderPct(e).toFixed(1)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+};
+
+// ---------- Hook into career creation ----------
+const prevGenerate = $("btnNewCareer").onclick;
+$("btnNewCareer").onclick = ()=>{
+  prevGenerate && prevGenerate();
+
+  // Create season + fixture
+  App.season = newSeason(2026);
+  App.season.rounds = generateFixture23();
+  saveCareer();
+
+  toast("Season created", "23 rounds generated");
+  refreshTopBar();
+  renderMain();
+};
+
+// ---------- Hub: Sim rest of round / Play user match (stub route) ----------
+$("btnSimRound").onclick = ()=>{
+  if (!App.hasCareer || !App.season) return toast("No season yet");
+  if (!App.userClubId) return toast("Pick your club first");
+  simulateRestOfRound();
+};
+
+$("btnPlayMatch").onclick = ()=>{
+  if (!App.hasCareer || !App.season) return toast("No season yet");
+  if (!App.userClubId) return toast("Pick your club first");
+  const rnd = currentRound();
+  const userFx = rnd.games.find(g => g.home === App.userClubId || g.away === App.userClubId);
+  if (!userFx) return toast("No user fixture found");
+
+  // Setup match header (actual sim comes in Chunk 4)
+  const homeClub = App.league.clubs.find(c=>c.id===userFx.home);
+  const awayClub = App.league.clubs.find(c=>c.id===userFx.away);
+
+  $("matchHeader").textContent = `Round ${rnd.number} • ${homeClub.name} ${homeClub.nick} vs ${awayClub.name} ${awayClub.nick}`;
+  $("homeName").textContent = `${homeClub.name} ${homeClub.nick}`;
+  $("awayName").textContent = `${awayClub.name} ${awayClub.nick}`;
+
+  // reset scoreboard UI
+  $("homeScore").textContent = "0.0 (0)";
+  $("awayScore").textContent = "0.0 (0)";
+  $("quarterLine").textContent = "Q1: 0-0 • Q2: 0-0 • Q3: 0-0 • Q4: 0-0";
+  $("mQ").textContent = "0";
+  $("mT").textContent = "—";
+  $("feed").innerHTML = "";
+
+  toast("Match ready", "Chunk 4 adds the live sim");
+  go("match");
+};
+
+// ---------- Ensure season exists on load ----------
+(function ensureSeasonOnLoad(){
+  if (!App.hasCareer) return;
+  if (App.league && !App.season){
+    App.season = newSeason(2026);
+    App.season.rounds = generateFixture23();
+    saveCareer();
+  }
+  refreshTopBar();
+})();
+</script>
+
+  <script>
+(function hookAdvanceRound(){
+  const btn = document.getElementById("btnAdvanceRound");
+  if (!btn) return;
+
+  btn.onclick = () => {
+    if (!App.season) return toast("No season loaded");
+    // Sim the AI games first (non-user)
+    simulateRestOfRound();
+    // If your match is played, this will advance
+    endRoundAdvance();
+    // Update UI
+    refreshTopBar();
+    renderHub();
+    renderLadder();
+  };
 })();
 </script>
   
