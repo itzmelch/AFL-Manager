@@ -1018,5 +1018,54 @@ if (loadCareer()){
 }
 </script>
 
+<script>
+/* iPhone tap fix: bind touch + pointer + click for key buttons */
+(function iosTapFix(){
+  function bindTap(id, fn){
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    // Make sure nothing blocks taps
+    el.disabled = false;
+    el.style.pointerEvents = "auto";
+    el.style.touchAction = "manipulation";
+    el.style.webkitUserSelect = "none";
+
+    const handler = (e) => {
+      try { e.preventDefault(); } catch {}
+      try { e.stopPropagation(); } catch {}
+      fn();
+      return false;
+    };
+
+    // Remove any old handlers by cloning
+    const clone = el.cloneNode(true);
+    el.parentNode.replaceChild(clone, el);
+
+    clone.addEventListener("touchend", handler, { passive:false });
+    clone.addEventListener("pointerup", handler, { passive:false });
+    clone.addEventListener("click", handler, { passive:false });
+  }
+
+  function setFocus(focus){
+    if (!window.App) return;
+    App.trainingFocus = focus;
+    if (typeof renderHub === "function") renderHub();
+  }
+
+  // Training focus buttons
+  bindTap("focusBalanced", ()=> setFocus("Balanced"));
+  bindTap("focusFitness",   ()=> setFocus("Fitness"));
+  bindTap("focusSkills",    ()=> setFocus("Skills"));
+  bindTap("focusTactics",   ()=> setFocus("Tactics"));
+  bindTap("focusRehab",     ()=> setFocus("Rehab"));
+
+  // (Optional) speed buttons too, so they never fail
+  bindTap("speedSlow", ()=> { document.getElementById("mS").textContent="Slow"; });
+  bindTap("speedMed",  ()=> { document.getElementById("mS").textContent="Medium"; });
+  bindTap("speedFast", ()=> { document.getElementById("mS").textContent="Fast"; });
+})();
+</script>
+  
 </body>
 </html>
