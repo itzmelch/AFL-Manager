@@ -1066,6 +1066,68 @@ if (loadCareer()){
   bindTap("speedFast", ()=> { document.getElementById("mS").textContent="Fast"; });
 })();
 </script>
+
+<script>
+/* Patch: make renderHub() safe before Chunk 3 creates App.season */
+(function patchRenderHub(){
+  window.renderHub = function renderHub(){
+    if (!App.hasCareer) { go("main"); return; }
+
+    const year = App.season?.year ?? "—";
+    const roundIndex = App.season?.roundIndex ?? 0;
+    const roundNo = roundIndex + 1;
+
+    $("hubWeekLine").textContent = `Season ${year} • Round ${roundNo}`;
+
+    // focus UI
+    const focusButtons = {
+      Balanced: $("focusBalanced"),
+      Fitness: $("focusFitness"),
+      Skills: $("focusSkills"),
+      Tactics: $("focusTactics"),
+      Rehab: $("focusRehab")
+    };
+    for (const k in focusButtons){
+      if (!focusButtons[k]) continue;
+      focusButtons[k].classList.toggle("active", App.trainingFocus === k);
+    }
+
+    // Selected 22 + Avg Rating
+    const selIds = App.selection?.selectedIds ?? [];
+    $("selCount").textContent = String(selIds.length);
+
+    if (App.league && selIds.length){
+      let sum = 0;
+      for (const id of selIds){
+        const p = App.league.playersById[id];
+        if (p) sum += p.rating;
+      }
+      $("selAvg").textContent = String(Math.round(sum / selIds.length));
+    } else {
+      $("selAvg").textContent = "—";
+    }
+
+    // Injuries count
+    const club = getUserClub();
+    if (club && App.league){
+      const inj = club.playerIds
+        .map(id => App.league.playersById[id])
+        .filter(p => p && p.injured > 0).length;
+      $("injCount").textContent = String(inj);
+    } else {
+      $("injCount").textContent = "—";
+    }
+
+    // Preview
+    if (typeof renderSquadPreview === "function") renderSquadPreview();
+  };
+
+  // Re-render immediately so UI reflects current focus
+  if (document.getElementById("screen-hub")?.classList.contains("active")) {
+    renderHub();
+  }
+})();
+</script>
   
 </body>
 </html>
